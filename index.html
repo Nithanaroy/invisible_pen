@@ -39,18 +39,17 @@
         <p> <strong>Image Credits: </strong>https://cdn.pixabay.com/photo/2017/04/03/17/35/animals-2198994_960_720.jpg</p>
     </div> -->
 
-    <div id="info" style='display:none'>
-    </div>
+    <div id="info"><p>Tracking is OFF</p></div>
     <div id="loading" style='display:flex'>
-        <div class="spinner-text">
-            Loading PoseNet model...
-        </div>
+        <div class="spinner-text">Loading model...</div>
         <div class="sk-spinner sk-spinner-pulse"></div>
     </div>
     <div id='main' style='display:none'>
         <video id="video" playsinline style="display: none;"></video>
         <canvas id="output"></canvas>
     </div>
+    <button type="button" id="startTrackingBtn" onclick="startTracking()">Start Tracking</button>
+    <button type="button" id="stopTrackingBtn" onclick="stopTracking()">Stop Tracking</button>
 
     <script src="demo_util.js"></script>
     <script src="camera.js"></script>
