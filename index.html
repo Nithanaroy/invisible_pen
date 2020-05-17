@@ -1,65 +1,57 @@
-<!-- Load TensorFlow.js. This is required to use coco-ssd model. -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"> </script>
-<!-- Load the coco-ssd model. -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"> </script>
+<!DOCTYPE html>
+<html lang="en">
 
-<!-- Replace this with your image. Make sure CORS settings allow reading the image! -->
-<div style="position: relative; margin: 0; padding: 0" id="imgDiv">
-    <img id="img" src="cat-dog.jpg" />
-    <p id="notes"></p>
-    <p> <strong>Image Credits: </strong>https://cdn.pixabay.com/photo/2017/04/03/17/35/animals-2198994_960_720.jpg</p>
-</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Invisible Pen</title>
 
-<style>
-    div.box {
-        margin: 0;
-        padding: 0;
-        border: 2px solid #FFF;
-        position: absolute;
-    }
+    <!-- Load TensorFlow.js. This is required to use coco-ssd model. -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"> </script>
+    <!-- Load the coco-ssd model. -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"> </script>
 
-    div.box p {
-        background: rgba(255, 255, 255, 0.7);
-        padding: 0.5rem;
-        color: #000;
-        margin: 0;
-    }
-</style>
+    <style>
+        div.box {
+            margin: 0;
+            padding: 0;
+            border: 2px solid #FFF;
+            position: absolute;
+        }
 
-<!-- Place your code in the script tag below. You can also use an external .js file -->
-<script>
-    // Notice there is no 'import' statement. 'cocoSsd' and 'tf' is
-    // available on the index-page because of the script tag above.
+        div.box p {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 0.5rem;
+            color: #000;
+            margin: 0;
+        }
+    </style>
 
-    const img = document.getElementById('img');
-    const imgDiv = document.getElementById("imgDiv");
-    const notes = document.getElementById("notes");
+</head>
 
-    function drawBox(x, y, width, height, objectClass) {
-        const div = document.createElement("div");
-        const objInfo = document.createElement("p");
-        objInfo.appendChild(document.createTextNode(objectClass));
-        div.appendChild(objInfo);
+<body>
+    <!-- Replace this with your image. Make sure CORS settings allow reading the image! -->
+    <div>
+    </div>
+    
+    <div style="position: relative; margin: 0; padding: 0" id="imgDiv">
+        <video autoplay playsinline muted id="wc" width="224" height="224"></video>
+        <button type="button" id="predictBtn" disabled onclick="predictCapture()">Capture & Predict</button>
+        <p id="notes"></p>
+        <!-- <p> <strong>Image Credits: </strong>https://cdn.pixabay.com/photo/2017/04/03/17/35/animals-2198994_960_720.jpg</p> -->
+    </div>
+    
+    <script src="webcam.js"></script>
+    <script src="index.js"></script> <!-- Depends on webcam script -->
 
-        div.className = "box";
-        div.style.width = width;
-        div.style.height = height;
-        div.style.left = x;
-        div.style.top = y;
-        imgDiv.appendChild(div);
-    }
+    <!-- Place your code in the script tag below. You can also use an external .js file -->
+    <script>
+        // Notice there is no 'import' statement. 'cocoSsd' and 'tf' is
+        // available on the index-page because of the script tag above.
 
-    // Load the model.
-    cocoSsd.load().then(model => {
-        // detect objects in the image.
-        const startTimestampMs = new Date().getTime()
-        model.detect(img).then(predictions => {
-            const durationMs = new Date().getTime() - startTimestampMs;
-            notes.innerHTML = `Took ${durationMs}ms to identify ${predictions.length} objects in the image`
-            console.log('Predictions: ', predictions);
-            for (const prediction of predictions) {
-                drawBox(...(prediction.bbox.concat(prediction.class)));
-            }
-        });
-    });
-</script>
+        // const img = document.getElementById('img');
+        
+    </script>
+</body>
+
+</html>
