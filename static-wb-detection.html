@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Invisible Pen</title>
+
+    <!--    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@2.0.1"></script>-->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.1"></script>
+    <script src="static-wb-detection.js"></script>
+
+    <style>
+        div.box {
+            margin: 0;
+            padding: 0;
+            border: 2px solid #FFF;
+            position: absolute;
+        }
+
+        div.box p {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 0.5rem;
+            color: #000;
+            margin: 0;
+        }
+    </style>
+
+</head>
+
+<body>
+<button type="button" onclick="predictBtnClick()">Predict</button>
+<button type="button" onclick="clearBtnClick()">Clear</button>
+<input type="file" onchange="fileSelected(this);"/>
+<div style="position: relative; margin: 0; padding: 0" id="imgDiv">
+    <img id="img" src="whiteboard-pen.jpeg" style="max-width: 800px"/>
+    <p id="notes"></p>
+</div>
+
+<script>
+  const img = document.getElementById('img');
+  const imgDiv = document.getElementById("imgDiv");
+  const notes = document.getElementById("notes");
+  const bpCoco = new BoardAndPenDetector("tfjs_wbp_coco_ssd_model/model.json", imgDiv);
+
+  async function predictBtnClick() {
+    clearMarkedObjects();
+    await bpCoco.load();
+    const startTimestampMs = new Date().getTime();
+    const objects = await bpCoco.infer(img, 2);
+    const durationMs = new Date().getTime() - startTimestampMs;
+    for (let object of objects) {
+      bpCoco.drawBox(...[...object['bbox'], object['class']]);
+    }
+    console.log(`Found ${Object.keys(objects).length} objects in ${durationMs}ms`);
+    console.log(objects);
+  }
+
+  function clearMarkedObjects() {
+    imgDiv.querySelectorAll(".box").forEach(b => b.remove());
+  }
+
+  function clearBtnClick() {
+    clearMarkedObjects();
+  }
+
+  function fileSelected(input) {
+    clearMarkedObjects();
+    displaySelectedImage(input);
+  }
+
+  // Pulled from https://stackoverflow.com/a/12369027/1585523
+  function displaySelectedImage(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+</script>
+</body>
+
+</html>

@@ -7,9 +7,9 @@
     <title>The Invisible Pen</title>
 
     <!-- Load TensorFlow.js. This is required to use coco-ssd model. -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"> </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.1"></script>
     <!-- Load the coco-ssd model. -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"> </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.0.3"></script>
 
     <style>
         div.box {
@@ -30,51 +30,51 @@
 </head>
 
 <body>
-    <!-- Replace this with your image. Make sure CORS settings allow reading the image! -->
-    <div style="position: relative; margin: 0; padding: 0" id="imgDiv">
-        <img id="img" src="cat-dog.jpg" />
-        <p id="notes"></p>
-        <p> <strong>Image Credits: </strong>https://cdn.pixabay.com/photo/2017/04/03/17/35/animals-2198994_960_720.jpg
-        </p>
-    </div>
+<!-- Replace this with your image. Make sure CORS settings allow reading the image! -->
+<div style="position: relative; margin: 0; padding: 0" id="imgDiv">
+    <img id="img" src="cat-dog.jpg" style="max-width: 800px"/>
+    <p id="notes"></p>
+    <p><strong>Image Credits: </strong>https://cdn.pixabay.com/photo/2017/04/03/17/35/animals-2198994_960_720.jpg
+    </p>
+</div>
 
-    <!-- Place your code in the script tag below. You can also use an external .js file -->
-    <script>
-        // Notice there is no 'import' statement. 'cocoSsd' and 'tf' is
-        // available on the index-page because of the script tag above.
+<!-- Place your code in the script tag below. You can also use an external .js file -->
+<script>
+  // Notice there is no 'import' statement. 'cocoSsd' and 'tf' is
+  // available on the index-page because of the script tag above.
 
-        const img = document.getElementById('img');
-        const imgDiv = document.getElementById("imgDiv");
-        const notes = document.getElementById("notes");
+  const img = document.getElementById('img');
+  const imgDiv = document.getElementById("imgDiv");
+  const notes = document.getElementById("notes");
 
-        function drawBox(x, y, width, height, objectClass) {
-            const div = document.createElement("div");
-            const objInfo = document.createElement("p");
-            objInfo.appendChild(document.createTextNode(objectClass));
-            div.appendChild(objInfo);
+  function drawBox(x, y, width, height, objectClass) {
+    const div = document.createElement("div");
+    const objInfo = document.createElement("p");
+    objInfo.appendChild(document.createTextNode(objectClass));
+    div.appendChild(objInfo);
 
-            div.className = "box";
-            div.style.width = width;
-            div.style.height = height;
-            div.style.left = x;
-            div.style.top = y;
-            imgDiv.appendChild(div);
-        }
+    div.className = "box";
+    div.style.width = `${width}px`;
+    div.style.height = `${height}px`;
+    div.style.left = `${x}px`;
+    div.style.top = `${y}px`;
+    imgDiv.appendChild(div);
+  }
 
-        // Load the model.
-        cocoSsd.load().then(model => {
-            // detect objects in the image.
-            const startTimestampMs = new Date().getTime()
-            model.detect(img).then(predictions => {
-                const durationMs = new Date().getTime() - startTimestampMs;
-                notes.innerHTML = `Took ${durationMs}ms to identify ${predictions.length} objects in the image`
-                console.log('Predictions: ', predictions);
-                for (const prediction of predictions) {
-                    drawBox(...(prediction.bbox.concat(prediction.class)));
-                }
-            });
-        });
-    </script>
+  // Load the model.
+  cocoSsd.load().then(model => {
+    // detect objects in the image.
+    const startTimestampMs = new Date().getTime();
+    model.detect(img).then(predictions => {
+      const durationMs = new Date().getTime() - startTimestampMs;
+      notes.innerHTML = `Took ${durationMs}ms to identify ${predictions.length} objects in the image`;
+      console.log('Predictions: ', predictions);
+      for (const prediction of predictions) {
+        drawBox(...(prediction.bbox.concat(prediction.class)));
+      }
+    });
+  });
+</script>
 </body>
 
 </html>
