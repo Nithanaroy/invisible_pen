@@ -9,17 +9,11 @@ class Home extends React.Component {
 
   predictBtnClick = async () => {
     this.clearMarkedObjects();
-    console.log("1")
     await this.bpCoco.load();
-    console.log("2")
     const startTimestampMs = new Date().getTime();
-    console.log("3")
     const objects = await this.bpCoco.infer(this.img, 2);
-    console.log("4")
     const durationMs = new Date().getTime() - startTimestampMs;
-    console.log("5")
     for (let object of objects) {
-      console.log("6")
       this.bpCoco.drawBox(...[...object['bbox'], object['class']]);
     }
     console.log(`Found ${Object.keys(objects).length} objects in ${durationMs}ms`);

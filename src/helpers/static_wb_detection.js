@@ -45,24 +45,18 @@ class BoardAndPenDetector {
   }
 
   async load() {
-    console.log("2.1")
     if (!!this.model) {
       console.warn("As the model is already loaded, not loading again.");
       return;
     }
-    console.log("2.2")
     this.model = await tf.loadGraphModel(this.modelPath);
 
     const zeroTensor = tf.zeros([1, 300, 300, 3], 'int32');
     // Warmup the model.
-    console.log("2.3")
     const result = await this.model.executeAsync(zeroTensor);
-    console.log("2.4")
     await Promise.all(result.map(t => t.data()));
-    console.log("2.5")
     result.map(t => t.dispose());
     zeroTensor.dispose();
-    console.log("2.6")
   }
 
   async predict(img, maxNumBoxes) {
