@@ -4,6 +4,8 @@ The aim of the project is to try and convert any computer screen into a touch sc
 
 ## Demos
 
-Basic demo showing how the custom detection model detects the whiteboard (compute screen) and a marker on a set of images completely in browser using tensorflow-js. It can be reproduced from [this version](https://github.com/Nithanaroy/invisible_pen/blob/0853ec31644213fd57a40fa03ff28e35ea2199da/static-wb-detection.html) of the project using a simple HTTP server.
+Below is a basic screencast showing how the custom detection model detects the whiteboard (compute screen) and a marker on a set of images completely in browser using tensorflow-js. It can be reproduced on your machine by hosting [this version](https://github.com/Nithanaroy/invisible_pen/blob/0853ec31644213fd57a40fa03ff28e35ea2199da/static-wb-detection.html) of the project using a simple HTTP server.
 
 <a href="https://youtu.be/nt8XFkXnr5w" target="_blank"><img src=https://i.imgur.com/avx1Gdb.png /></a>
+
+For a **live demo** of the latest app & model visit https://invisible-pen.vercel.app/
