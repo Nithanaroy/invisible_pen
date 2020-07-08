@@ -33,7 +33,7 @@
 <button type="button" onclick="clearBtnClick()">Clear</button>
 <input type="file" onchange="fileSelected(this);"/>
 <div style="position: relative; margin: 0; padding: 0" id="imgDiv">
-    <img id="img" src="whiteboard-pen.jpeg" style="max-width: 800px"/>
+    <img id="img" src="../src/public/whiteboard-pen.jpeg" style="max-width: 800px"/>
     <p id="notes"></p>
 </div>
 
@@ -41,7 +41,7 @@
   const img = document.getElementById('img');
   const imgDiv = document.getElementById("imgDiv");
   const notes = document.getElementById("notes");
-  const bpCoco = new BoardAndPenDetector("tfjs_wbp_coco_ssd_model/model.json", imgDiv);
+  const bpCoco = new BoardAndPenDetector("../src/public/tfjs_wbp_coco_ssd_model/model.json", imgDiv);
 
   async function predictBtnClick() {
     clearMarkedObjects();
