@@ -5,7 +5,7 @@ import Camera from "../helpers/camera";
 class Home extends React.Component {
   constructor() {
     super();
-    this.state = {imgSrc: "/whiteboard-pen.jpeg"}
+    this.state = {}
   }
 
   startTracking = () => {

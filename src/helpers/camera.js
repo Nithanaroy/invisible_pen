@@ -25,11 +25,12 @@ const videoWidth = 600;
 const videoHeight = 500;
 
 class Camera {
-  constructor(info, canvas, video, model) {
+  constructor(info, canvas, video, model, frontFacingCamera = false) {
     this.info = info;
     this.canvas = canvas;
     this.video = video;
     this.model = model;
+    this.frontFacingCamera = frontFacingCamera;
 
     this.ctx = canvas.getContext('2d');
     this.guiState = {
@@ -53,14 +54,15 @@ class Camera {
     }
 
     const video = this.video;
+    const mobile = isMobile();
+
     video.width = videoWidth;
     video.height = videoHeight;
 
-    const mobile = isMobile();
     video.srcObject = await navigator.mediaDevices.getUserMedia({
       'audio': false,
       'video': {
-        facingMode: 'user',
+        facingMode: this.frontFacingCamera ? "user" : "environment",
         width: mobile ? undefined : videoWidth,
         height: mobile ? undefined : videoHeight,
       },
