@@ -52,7 +52,7 @@ class BoardAndPenDetector {
     this.model = await tf.loadGraphModel(this.modelPath);
 
     const zeroTensor = tf.zeros([1, 300, 300, 3], 'int32');
-    // Warmup the model.
+    // Warm up the model.
     const result = await this.model.executeAsync(zeroTensor);
     await Promise.all(result.map(t => t.data()));
     result.map(t => t.dispose());

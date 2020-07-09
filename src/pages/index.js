@@ -1,54 +1,33 @@
 import Head from 'next/head'
-import BoardAndPenDetector from "../helpers/static_wb_detection";
+import BoardAndPenDetector from "../helpers/board_pen_learner";
+import Camera from "../helpers/camera";
 
 class Home extends React.Component {
   constructor() {
-    super()
-    this.state = { imgSrc: "/whiteboard-pen.jpeg" }
+    super();
+    this.state = {imgSrc: "/whiteboard-pen.jpeg"}
   }
 
-  predictBtnClick = async () => {
-    this.clearMarkedObjects();
-    await this.bpCoco.load();
-    const startTimestampMs = new Date().getTime();
-    const objects = await this.bpCoco.infer(this.img, 2);
-    const durationMs = new Date().getTime() - startTimestampMs;
-    for (let object of objects) {
-      this.bpCoco.drawBox(...[...object['bbox'], object['class']]);
+  startTracking = () => {
+    if (!this.camera.guiState.modelReady) {
+      this.info.textContent = "Model is not ready yet. Cannot start tracking until then."
     }
-    console.log(`Found ${Object.keys(objects).length} objects in ${durationMs}ms`);
-    console.log(objects);
-  }
+    this.camera.guiState.input.tracking = true;
+    this.info.textContent = 'Tracking is ON';
+  };
 
-  clearMarkedObjects = () => {
-    this.imgDiv.querySelectorAll(".box").forEach(b => b.remove());
-  }
-
-  clearBtnClick = () => {
-    this.clearMarkedObjects();
-  }
-
-  fileSelected = (e) => {
-    this.clearMarkedObjects();
-    this.displaySelectedImage(e.target);
-  }
-
-  // Pulled from https://stackoverflow.com/a/12369027/1585523
-  displaySelectedImage = (input) => {
-    const self = this;
-    if (input.files && input.files[0]) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        self.setState({ imgSrc: reader.result });
-      };
-      reader.readAsDataURL(input.files[0]);
-    }
-  }
+  stopTracking = () => {
+    this.camera.guiState.input.tracking = false;
+    this.info.textContent = "Tracking is OFF";
+  };
 
   componentDidMount() {
-    this.img = document.getElementById("img");
-    this.imgDiv = document.getElementById("imgDiv");
-    this.bpCoco = new BoardAndPenDetector("/tfjs_wbp_coco_ssd_model/model.json", imgDiv);
+    const canvas = document.getElementById('output');
+    const video = document.getElementById('video');
+    this.info = document.getElementById('info');
+    this.bpCoco = new BoardAndPenDetector("/tfjs_wbp_coco_ssd_model/model.json", null);
+    this.camera = new Camera(this.info, canvas, video, this.bpCoco);
+    this.camera.bindPage();
   }
 
   render() {
@@ -56,17 +35,21 @@ class Home extends React.Component {
       <div className="container">
         <Head>
           <title>Invisible Pen</title>
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" href="/favicon.ico"/>
         </Head>
 
         <main>
-          <button type="button" onClick={this.predictBtnClick}>Predict</button>
-          <button type="button" onClick={this.clearBtnClick}>Clear</button>
-          <input type="file" onChange={this.fileSelected} />
-          <div style={{ position: "relative", margin: 0, padding: 0 }} id="imgDiv">
-            <img id="img" src={this.state.imgSrc} style={{ "maxWidth": "800px" }} />
-            <p id="notes"></p>
+          <div id="info"><p>Tracking is OFF</p></div>
+          <div id="loading" style={{"display": "flex"}}>
+            <div className="spinner-text">Loading model...</div>
+            <div className="sk-spinner sk-spinner-pulse"/>
           </div>
+          <div id='main' style={{"display": "none"}}>
+            <video id="video" playsInline style={{"display": "none"}}/>
+            <canvas id="output"/>
+          </div>
+          <button type="button" id="startTrackingBtn" onClick={this.startTracking}>Start Tracking</button>
+          <button type="button" id="stopTrackingBtn" onClick={this.stopTracking}>Stop Tracking</button>
         </main>
 
         <style jsx global>{``}</style>
