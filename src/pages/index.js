@@ -1,6 +1,7 @@
 import Head from 'next/head'
-import BoardAndPenDetector from "../helpers/board_pen_learner";
+import * as handpose from '@tensorflow-models/handpose';
 import Camera from "../helpers/camera";
+import HandTracker from "../helpers/hand-tracker/hand_tracker"
 
 class Home extends React.Component {
   constructor() {
@@ -9,25 +10,31 @@ class Home extends React.Component {
   }
 
   startTracking = () => {
-    if (!this.camera.guiState.modelReady) {
-      this.info.textContent = "Model is not ready yet. Cannot start tracking until then."
-    }
-    this.camera.guiState.input.tracking = true;
+    // if (!this.camera.guiState.modelReady) {
+    //   this.info.textContent = "Model is not ready yet. Cannot start tracking until then."
+    // }
+    this.tracker.state.isTracking = true;
     this.info.textContent = 'Tracking is ON';
   };
 
   stopTracking = () => {
-    this.camera.guiState.input.tracking = false;
+    this.tracker.state.isTracking = false;
     this.info.textContent = "Tracking is OFF";
   };
 
+  videoReady = () => {
+    return new Promise((resolve, reject) => {
+      this.video.onloadeddata = () => resolve("Webcam is ready!");
+    });
+  };
+
   componentDidMount() {
-    const canvas = document.getElementById('output');
-    const video = document.getElementById('video');
     this.info = document.getElementById('info');
-    this.bpCoco = new BoardAndPenDetector("/tfjs_wbp_coco_ssd_model/model.json", null);
-    this.camera = new Camera(this.info, canvas, video, this.bpCoco);
-    this.camera.bindPage();
+    const canvas = document.getElementById('output');
+    const VIDEO_WIDTH = 640, VIDEO_HEIGHT = 500;
+    const camera = new Camera(document.getElementById('video'), VIDEO_WIDTH, VIDEO_HEIGHT);
+    this.tracker = new HandTracker(canvas, camera);
+    this.tracker.main(this.info);
   }
 
   render() {
@@ -35,24 +42,28 @@ class Home extends React.Component {
       <div className="container">
         <Head>
           <title>Invisible Pen</title>
+          <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0, user-scalable=no"/>
           <link rel="icon" href="/favicon.ico"/>
         </Head>
 
         <main>
-          <div id="info"><p>Tracking is OFF</p></div>
-          <div id="loading" style={{"display": "flex"}}>
-            <div className="spinner-text">Loading model...</div>
-            <div className="sk-spinner sk-spinner-pulse"/>
-          </div>
-          <div id='main' style={{"display": "none"}}>
-            <video id="video" playsInline style={{"display": "none"}}/>
+          <div id="info"/>
+          <div id="predictions"/>
+          <div id="canvas-wrapper">
             <canvas id="output"/>
+            <video id="video" playsInline style={{
+              "WebkitTransform": "scaleX(-1)",
+              "transform": "scaleX(-1)",
+              "visibility": "hidden",
+              "width": "auto",
+              "height": "auto",
+              "position": "absolute"
+            }}>
+            </video>
           </div>
           <button type="button" id="startTrackingBtn" onClick={this.startTracking}>Start Tracking</button>
           <button type="button" id="stopTrackingBtn" onClick={this.stopTracking}>Stop Tracking</button>
         </main>
-
-        <style jsx global>{``}</style>
       </div>
     )
   }

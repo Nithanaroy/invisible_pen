@@ -1,3 +1,4 @@
+// requires "@tensorflow/tfjs": "2.0.1",
 import * as tf from '@tensorflow/tfjs';
 
 const CLASSES = {
