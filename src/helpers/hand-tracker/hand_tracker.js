@@ -9,11 +9,10 @@ import {isMobile} from "../demo_util"
 
 class HandTracker {
 
-  constructor(canvas, camera) {
+  constructor(canvas, camera, debugState) {
     tfjsWasm.setWasmPath(`https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@${version_wasm}/dist/tfjs-backend-wasm.wasm`);
     this.canvas = canvas;
     this.camera = camera;
-    // scatterGLHasInitialized = false, scatterGL 
     this.fingerLookupIndices = {
       thumb: [0, 1, 2, 3, 4],
       indexFinger: [0, 5, 6, 7, 8],
@@ -23,34 +22,19 @@ class HandTracker {
     };  // for rendering each finger as a polyline
 
     this.mobile = isMobile();
-    // Don't render the point cloud on mobile in order to maximize performance and
-    // to avoid crowding limited screen space.
-    // const renderPointcloud = false; //mobile === false;
 
     this.state = {
       backend: 'webgl',
-      isTracking: false
+      isTracking: false,
+      debug: {
+        showLiveCameraFeed: true,
+        showIndexFingerTracking: true,
+        showHandTracking: false,
+        ...debugState
+      }
     };
 
-    // if (renderPointcloud) {
-    //   state.renderPointcloud = true;
-    // }
   }
-
-  // setupDatGui() {
-  //   const gui = new dat.GUI();
-  //   gui.add(state, 'backend', ['wasm', 'webgl', 'cpu', 'webgpu'])
-  //     .onChange(async backend => {
-  //       await tf.setBackend(backend);
-  //     });
-  //
-  //   if (renderPointcloud) {
-  //     gui.add(state, 'renderPointcloud').onChange(render => {
-  //       document.querySelector('#scatter-gl-container').style.display =
-  //         render ? 'inline-block' : 'none';
-  //     });
-  //   }
-  // }
 
   drawPoint(ctx, y, x, r) {
     ctx.beginPath();
@@ -89,37 +73,40 @@ class HandTracker {
     }
   }
 
-  async main(infoContainer) {
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    // await tf.setBackend(state.backend);
-    await tf.ready();
-    this.model = await handpose.load();
-    let video;
-
-    try {
-      video = await this.camera.loadVideo();
-    } catch (e) {
-      infoContainer.textContent = e.message;
-      // throw e;
+  logPredictions = (predictions, ctx, outputContainer) => {
+    let log = "";
+    const tipIndex = 3; // for each finger, handpose returns 3 landmarks / points
+    for (let i = 0; i < predictions.length; i++) {
+      const prediction = predictions[i];
+      const tip = prediction["annotations"]["indexFinger"][tipIndex].map(coord => coord.toFixed(0)).join(", ");
+      log += `Index finger ${i + 1}'s tip is at (${tip}) <br />`;
+      this.drawPoint(ctx, prediction["annotations"]["indexFinger"][tipIndex][1] - 2, prediction["annotations"]["indexFinger"][tipIndex][0] - 2, 3)
     }
+    outputContainer.innerHTML = log;
+    this.drawPoint(ctx, 5, 5, 3) // mark (0, 0) for reference
+  };
 
-    this.landmarksRealTime(video);
+  /**
+   * Draw user's gesture on the canvas
+   * @param predictions: return value of handpose.estimateHands
+   * @param c: an instance of FreeFormDrawingCanvas
+   */
+  drawOnCanvas(predictions, c) {
+    for (let i = 0; i < predictions.length; i++) {
+      const prediction = predictions[i];
+      const tipIndex = 3;
+      c.drawLineTo(prediction["annotations"]["indexFinger"][tipIndex][0], prediction["annotations"]["indexFinger"][tipIndex][1], false);
+      break;
+    }
   }
 
-  async landmarksRealTime(video) {
-    // setupDatGui();
-
-    // const stats = new Stats();
-    // stats.showPanel(0);
-    // document.body.appendChild(stats.dom);
-
+  async landmarksRealTime(video, infoContainer, freeFormCanvas) {
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
+    const ctx = this.canvas.getContext('2d');
 
     this.canvas.width = videoWidth;
     this.canvas.height = videoHeight;
-
-    const ctx = this.canvas.getContext('2d');
 
     video.width = videoWidth;
     video.height = videoHeight;
@@ -127,68 +114,47 @@ class HandTracker {
     ctx.clearRect(0, 0, videoWidth, videoHeight);
     ctx.strokeStyle = 'red';
     ctx.fillStyle = 'red';
-
     ctx.translate(this.canvas.width, 0);
     ctx.scale(-1, 1);
 
-    // These anchor points allow the hand pointcloud to resize according to its position in the input.
-    // const ANCHOR_POINTS = [
-    //   [0, 0, 0], [0, -VIDEO_HEIGHT, 0], [-VIDEO_WIDTH, 0, 0],
-    //   [-VIDEO_WIDTH, -VIDEO_HEIGHT, 0]
-    // ];
-
     const frameLandmarks = async () => {
       // stats.begin();
-      ctx.drawImage(video, 0, 0, videoWidth, videoHeight, 0, 0, this.canvas.width, this.canvas.height);
-
+      if (this.state.debug.showLiveCameraFeed) {
+        ctx.drawImage(video, 0, 0, videoWidth, videoHeight, 0, 0, this.canvas.width, this.canvas.height);
+      }
       if (this.state.isTracking) {
         const predictions = await this.model.estimateHands(video);
         if (predictions.length > 0) {
-          const result = predictions[0].landmarks;
-          this.drawKeypoints(ctx, result, predictions[0].annotations);
+          if (this.state.debug.showHandTracking) {
+            const result = predictions[0].landmarks;
+            this.drawKeypoints(ctx, result, predictions[0].annotations);
+          }
+          if (this.state.debug.showIndexFingerTracking) {
+            this.logPredictions(predictions, ctx, infoContainer);
+          }
+          this.drawOnCanvas(predictions, freeFormCanvas);
         }
       }
-
-      // if (renderPointcloud === true && scatterGL != null) {
-      //   const pointsData = result.map(point => {
-      //     return [-point[0], -point[1], -point[2]];
-      //   });
-      //
-      //   const dataset =
-      //     new ScatterGL.Dataset([...pointsData, ...ANCHOR_POINTS]);
-      //
-      //   if (!scatterGLHasInitialized) {
-      //     scatterGL.render(dataset);
-      //
-      //     const fingers = Object.keys(fingerLookupIndices);
-      //
-      //     scatterGL.setSequences(
-      //       fingers.map(finger => ({indices: fingerLookupIndices[finger]})));
-      //     scatterGL.setPointColorer((index) => {
-      //       if (index < pointsData.length) {
-      //         return 'steelblue';
-      //       }
-      //       return 'white';  // Hide.
-      //     });
-      //   } else {
-      //     scatterGL.updateDataset(dataset);
-      //   }
-      //   scatterGLHasInitialized = true;
-      // }
       // stats.end();
       requestAnimationFrame(frameLandmarks);
     };
 
     frameLandmarks();
+  }
 
-    // if (renderPointcloud) {
-    //   document.querySelector('#scatter-gl-container').style =
-    //     `width: ${VIDEO_WIDTH}px; height: ${VIDEO_HEIGHT}px;`;
-    //
-    //   scatterGL = new ScatterGL(
-    //     document.querySelector('#scatter-gl-container'),
-    //     {'rotateOnStart': false, 'selectEnabled': false});
-    // }
+  async main(infoContainer, freeFormCanvas) {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    // await tf.setBackend(state.backend); // comment to let tfjs automatically pick the best available backend
+    await tf.ready();
+    this.model = await handpose.load();
+
+    try {
+      const video = await this.camera.loadVideo();
+      this.landmarksRealTime(video, infoContainer, freeFormCanvas);
+    } catch (e) {
+      infoContainer.textContent = e.message;
+      // throw e;
+    }
   }
 }
 
