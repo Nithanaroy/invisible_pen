@@ -46,6 +46,10 @@ div.box p {
     margin-left: 0.75rem;
 }
 
+.mr-3 {
+    margin-right: 0.75rem;
+}
+
 .h1, h1 {
     font-size: 2.5rem;
 }
@@ -142,6 +146,12 @@ div.box p {
     color: #fff;
     background-color: #dc3545;
     border-color: #dc3545;
+}
+
+.btn-info {
+    color: #fff;
+    background-color: #17a2b8;
+    border-color: #17a2b8;
 }
 
 [type=button], [type=reset], [type=submit], button {

@@ -45,15 +45,24 @@ class Home extends React.Component {
     this.drawingCanvas.cleanCanvas();
   };
 
-  componentDidMount() {
-    this.info = document.getElementById('info');
-    const canvas = document.getElementById('output');
-    this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), true); // initialize the canvas
-    const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight);
+  flipCamera = () => {
+    const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight, !this.tracker.camera.frontFacingCamera);
+    this.initializeTracker(this.canvas, camera);
+  };
 
+  initializeTracker(canvas, camera) {
     this.tracker = new HandTracker(canvas, camera, this.state.debug);
     this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
     this.tracker.main(this.info, this.drawingCanvas);
+  }
+
+  componentDidMount() {
+    this.info = document.getElementById('info');
+    this.canvas = document.getElementById('output');
+    this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), true); // initialize the canvas
+    const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight);
+
+    this.initializeTracker(this.canvas, camera);
   }
 
   render() {
@@ -91,6 +100,9 @@ class Home extends React.Component {
                 <label htmlFor="indexFingerTracking" className="form-check-label">Show Index Finger Tracking</label>
               </div>
             </div>
+            <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
+                    title="Reloads the model">Flip Camera
+            </button>
             <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
                     onClick={this.startTracking}>
               Start Tracking
