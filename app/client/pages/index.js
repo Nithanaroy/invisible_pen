@@ -2,6 +2,7 @@ import Head from 'next/head'
 import Camera from "../helpers/camera";
 import HandTracker from "../helpers/hand-tracker/hand_tracker"
 import DrawingCanvas from "../helpers/drawing_canvas"
+import SocketIO from "../helpers/socket_communicator";
 
 class Home extends React.Component {
   constructor() {
@@ -10,11 +11,11 @@ class Home extends React.Component {
       videoWidth: 640, videoHeight: 500,
       isTracking: false,
       debug: {
-        showLiveCameraFeed: true,
-        showIndexFingerTracking: true,
+        showLiveCameraFeed: false,
+        showIndexFingerTracking: false,
         showHandTracking: false
       }
-    }
+    };
   }
 
   updateDebugState = (key, value) => {
@@ -24,6 +25,7 @@ class Home extends React.Component {
   };
 
   startTracking = () => {
+
     this.setState({isTracking: true});
     this.tracker.state.isTracking = true;
     this.info.textContent = 'Tracking is ON';
@@ -35,12 +37,6 @@ class Home extends React.Component {
     this.info.textContent = "Tracking is OFF";
   };
 
-  videoReady = () => {
-    return new Promise((resolve, reject) => {
-      this.video.onloadeddata = () => resolve("Webcam is ready!");
-    });
-  };
-
   clearCanvas = () => {
     this.drawingCanvas.cleanCanvas();
   };
@@ -50,17 +46,25 @@ class Home extends React.Component {
     this.initializeTracker(this.canvas, camera);
   };
 
-  initializeTracker(canvas, camera) {
-    this.tracker = new HandTracker(canvas, camera, this.state.debug);
+  initializeTracker(videoCanvas, camera) {
+    this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions);
     this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
     this.tracker.main(this.info, this.drawingCanvas);
   }
 
+  sendHandPredictions = (predictions) => {
+    if (predictions.length > 0) {
+      const indexFingerTip = 3;
+      this.socket.sendHandPredictions(predictions[0]["annotations"]["indexFinger"][indexFingerTip]);
+    }
+  };
+
   componentDidMount() {
     this.info = document.getElementById('info');
     this.canvas = document.getElementById('output');
-    this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), true); // initialize the canvas
+    this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), false); // initialize the canvas
     const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight);
+    this.socket = new SocketIO(document.domain, 5000, "test");
 
     this.initializeTracker(this.canvas, camera);
   }

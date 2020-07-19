@@ -8,12 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "@tensorflow-models/handpose": "^0.0.5",
+    "@tensorflow/tfjs": "2.0.1",
+    "@tensorflow/tfjs-backend-wasm": "^2.0.1",
+    "@tensorflow/tfjs-backend-webgl": "^2.0.1",
     "next": "9.4.4",
     "react": "16.13.1",
     "react-dom": "16.13.1",
-    "@tensorflow/tfjs": "2.0.1",
-    "@tensorflow-models/handpose": "^0.0.5",
-    "@tensorflow/tfjs-backend-wasm": "^2.0.1",
-    "@tensorflow/tfjs-backend-webgl": "^2.0.1"
+    "socket.io-client": "^2.3.0"
   }
 }

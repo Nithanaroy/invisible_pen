@@ -9,9 +9,16 @@ import {isMobile} from "../demo_util"
 
 class HandTracker {
 
-  constructor(canvas, camera, debugState) {
+  /**
+   * Wrapper for handpose TFJS model
+   * @param videoCanvas: instance of a HTML5 canvas element for rendering a modified live stream
+   * @param camera: instance HTML5 video element from which we capture the live stream
+   * @param debugState: An object describing what debug controls to log
+   * @param predCb: A callback for predictions
+   */
+  constructor(videoCanvas, camera, debugState, predCb) {
     tfjsWasm.setWasmPath(`https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@${version_wasm}/dist/tfjs-backend-wasm.wasm`);
-    this.canvas = canvas;
+    this.canvas = videoCanvas;
     this.camera = camera;
     this.fingerLookupIndices = {
       thumb: [0, 1, 2, 3, 4],
@@ -33,7 +40,7 @@ class HandTracker {
         ...debugState
       }
     };
-
+    this.predCb = predCb;
   }
 
   drawPoint(ctx, y, x, r) {
@@ -134,6 +141,7 @@ class HandTracker {
           }
           this.drawOnCanvas(predictions, freeFormCanvas);
         }
+        this.predCb(predictions);
       }
       // stats.end();
       requestAnimationFrame(frameLandmarks);
