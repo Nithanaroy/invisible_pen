@@ -139,7 +139,7 @@ class HandTracker {
           if (this.state.debug.showIndexFingerTracking) {
             this.logPredictions(predictions, ctx, infoContainer);
           }
-          this.drawOnCanvas(predictions, freeFormCanvas);
+          // this.drawOnCanvas(predictions, freeFormCanvas);
         }
         this.predCb(predictions);
       }

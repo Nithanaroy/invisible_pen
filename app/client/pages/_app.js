@@ -1,3 +1,4 @@
+import "bootstrap/dist/css/bootstrap.css";
 import "../css/index.css";
 
 // This default export is required in a new `pages/_app.js` file.

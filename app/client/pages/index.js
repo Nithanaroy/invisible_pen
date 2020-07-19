@@ -43,11 +43,12 @@ class Home extends React.Component {
 
   flipCamera = () => {
     const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight, !this.tracker.camera.frontFacingCamera);
-    this.initializeTracker(this.canvas, camera);
+    this.initializeTracker(this.videoCanvas, camera);
   };
 
   initializeTracker(videoCanvas, camera) {
     this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions);
+    this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.tracker.camera.frontFacingCamera); // initialize the canvas
     this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
     this.tracker.main(this.info, this.drawingCanvas);
   }
@@ -55,34 +56,65 @@ class Home extends React.Component {
   sendHandPredictions = (predictions) => {
     if (predictions.length > 0) {
       const indexFingerTip = 3;
-      this.socket.sendHandPredictions(predictions[0]["annotations"]["indexFinger"][indexFingerTip]);
+      const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
+      this.socket.sendHandPredictions([this.state.videoWidth - x, y]);
     }
   };
 
+  setTrackingOrigin = () => {
+    // Give some time for the user to move their mouse to required location
+    const timeout = 3;
+    let timeoutTimer = timeout;
+    const timer = setInterval(() => {
+      if (timeoutTimer === 0) {
+        clearInterval(timer);
+        this.info.textContent = `Your tracker is setup!`;
+      } else {
+        this.info.textContent = `Capturing mouse position in ${timeoutTimer}s`;
+        timeoutTimer--;
+      }
+    }, 1000);
+    try {
+      setTimeout(this.socket.setCurrMouseAsOrigin, timeout * 1000);
+    } catch (error) {
+      this.info.textContent = `Unable to setup the tracker. Please try again in sometime and check logs`;
+      console.error(error);
+    }
+  };
+
+  getContentSize(elem) {
+    let {height, width, paddingLeft, paddingTop, paddingRight, paddingBottom} = getComputedStyle(elem);
+    return {
+      contentHeight: parseFloat(height) - parseFloat(paddingTop) - parseFloat(paddingBottom),
+      contentWidth: parseFloat(width) - parseFloat(paddingLeft) - parseFloat(paddingRight)
+    }
+  }
+
   componentDidMount() {
     this.info = document.getElementById('info');
-    this.canvas = document.getElementById('output');
-    this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), false); // initialize the canvas
-    const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight);
+    this.videoCanvas = document.getElementById('output');
+    const {contentWidth, contentHeight} = this.getContentSize(document.getElementById('drawing-canvas-div'));
+    const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
+    this.setState({videoWidth: contentWidth, videoHeight: contentHeight});
     this.socket = new SocketIO("localhost", 5000, "test");
 
-    this.initializeTracker(this.canvas, camera);
+    this.initializeTracker(this.videoCanvas, camera);
   }
 
   render() {
     return (
-      <div className="container">
+      <div className="container-fluid">
         <Head>
           <title>Invisible Pen</title>
           <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0, user-scalable=no"/>
           <link rel="icon" href="/favicon.ico"/>
         </Head>
 
-        <main className="container-fluid">
-          <p className="display-2">Magic Wand</p>
+        <main>
+          <p className="display-2 text-center">Invisible Pen</p>
           <div id="info" className="alert alert-primary"/>
-          <div className="panel">
-            <h2>Debug Controls</h2>
+          <div className="card card-body col-md-6">
+            <h2 className="card-title">Debug Controls</h2>
             <div className="form-group">
               <div className="form-check">
                 <input type="checkbox" id="liveFeed" className="form-check-input"
@@ -104,24 +136,27 @@ class Home extends React.Component {
                 <label htmlFor="indexFingerTracking" className="form-check-label">Show Index Finger Tracking</label>
               </div>
             </div>
-            <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
-                    title="Reloads the model">Flip Camera
-            </button>
-            <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
-                    onClick={this.startTracking}>
-              Start Tracking
-            </button>
-            <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
-                    onClick={this.stopTracking}>
-              Stop Tracking
-            </button>
-            <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
+            <div className="">
+              <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
+                      title="Reloads the model">Flip Camera
+              </button>
+              <button type="button" className="btn btn-info mr-3" onClick={this.setTrackingOrigin}
+                      title="Use the current mouse position as the top-left corner of the screen">Setup Tracker
+              </button>
+              <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
+                      onClick={this.startTracking}>
+                Start Tracking
+              </button>
+              <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
+                      onClick={this.stopTracking}>
+                Stop Tracking
+              </button>
+              <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
+            </div>
           </div>
           {/*<div id="predictions"/>*/}
-          <div
-            style={{"display": "flex", "flexDirection": "horizontal", "justifyContent": "center", "flexWrap": "wrap"}}>
-            <div id="canvas-wrapper" style={{
-              "margin": "0.75rem",
+          <div className="row">
+            <div id="canvas-wrapper" className="col-md-6" style={{
               "display": this.state.debug.showLiveCameraFeed ? "block" : "none"
             }}>
               <canvas id="output"/>
@@ -135,8 +170,9 @@ class Home extends React.Component {
               }}>
               </video>
             </div>
-            <canvas id="freeFormCanvas" style={{"margin": "0.75rem",}} height={this.state.videoHeight}
-                    width={this.state.videoWidth}/>
+            <div id="drawing-canvas-div" className="col-md-6">
+              <canvas id="drawing-canvas" height={this.state.videoHeight} width={this.state.videoWidth}/>
+            </div>
           </div>
         </main>
       </div>

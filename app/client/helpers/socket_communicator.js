@@ -12,13 +12,17 @@ class SocketIO {
     this.s.on('disconnect', this.disconnected);
   }
 
-  sendHandPredictions(predictions) {
+  sendHandPredictions = (predictions) => {
     // if (!this.isConnected) {
     //   console.warn("Could not send predictions as the connection to server is not established");
     //   return;
     // }
     this.s.emit("hand-predictions", predictions);
-  }
+  };
+
+  setCurrMouseAsOrigin = () => {
+    this.s.emit("set-origin-auto");
+  };
 
   connected() {
     this.isConnected = true;

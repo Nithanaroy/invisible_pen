@@ -38,26 +38,27 @@ class FreeFormDrawingCanvas {
    * @param areAbsoluteCoords: Are X and Y absolute on screen or relative to canvas?
    */
   drawLineTo = (X, Y, areAbsoluteCoords = true) => {
+    // Compute relative position w.r.t the canvas
     const {x, y} = areAbsoluteCoords ? this.c.getBoundingClientRect() : {x: 0, y: 0};
-    const newX = X - x;
-    const newY = Y - y;
+    const relativeX = X - x;
+    const relativeY = Y - y;
 
     // Initialize at runtime if not set earlier
     if (this.lastX == null) {
-      this.lastX = newX;
-      this.lastY = newY;
+      this.lastX = relativeX;
+      this.lastY = relativeY;
     }
 
     this.ctx.beginPath();
     this.ctx.lineWidth = 5;
     this.ctx.moveTo(this.lastX, this.lastY);
-    this.ctx.lineTo(newX, newY);
+    this.ctx.lineTo(relativeX, relativeY);
     this.ctx.strokeStyle = 'white';
     this.ctx.stroke();
     this.ctx.closePath();
 
-    this.lastX = newX;
-    this.lastY = newY;
+    this.lastX = relativeX;
+    this.lastY = relativeY;
   };
 
   cleanCanvas() {
