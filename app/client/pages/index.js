@@ -64,7 +64,7 @@ class Home extends React.Component {
     this.canvas = document.getElementById('output');
     this.drawingCanvas = new DrawingCanvas(document.getElementById("freeFormCanvas"), false); // initialize the canvas
     const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight);
-    this.socket = new SocketIO(document.domain, 5000, "test");
+    this.socket = new SocketIO("localhost", 5000, "test");
 
     this.initializeTracker(this.canvas, camera);
   }
