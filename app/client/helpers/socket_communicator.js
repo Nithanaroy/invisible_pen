@@ -13,11 +13,11 @@ class SocketIO {
   }
 
   sendHandPredictions = (predictions) => {
-    // if (!this.isConnected) {
-    //   console.warn("Could not send predictions as the connection to server is not established");
-    //   return;
-    // }
-    this.s.emit("hand-predictions", predictions);
+    this.s.emit("move-mouse", predictions);
+  };
+
+  releaseMouse = () => {
+    this.s.emit("release-mouse");
   };
 
   setCurrMouseAsOrigin = () => {

@@ -14,12 +14,19 @@ def index():
     return render_template('index.html')
 
 
-@socketio.on('hand-predictions', namespace='/test')
-def read_message(message):
+@socketio.on('move-mouse', namespace='/test')
+def move_mouse(coords):
     # emit('my response', {'data': message['data']})
-    print(message)
-    pyautogui.dragTo(message[0] + ORIGIN["x"], message[1] + ORIGIN["y"], button='left')
-    # pyautogui.moveTo(2317, 425)
+    print(coords)
+    # pyautogui.dragTo(message[0] + ORIGIN["x"], message[1] + ORIGIN["y"], button='left')
+    # pyautogui.moveTo(coords[0] + ORIGIN["x"], coords[1] + ORIGIN["y"], button='left')
+    # pyautogui.mouseDown(coords[0] + ORIGIN["x"], coords[1] + ORIGIN["y"], button='left')
+
+
+@socketio.on('release-mouse', namespace='/test')
+def release_mouse():
+    print("Mouse released")
+    pyautogui.mouseUp()
 
 
 @socketio.on('set-origin-manual', namespace='/test')
@@ -46,7 +53,8 @@ def read_message(message):
 
 @socketio.on('connect', namespace='/test')
 def ack_connect():
-    emit('my response', {'data': 'Connected'})
+    # emit('my response', {'data': 'Connected'})
+    print("Client connected")
 
 
 @socketio.on('disconnect', namespace='/test')
@@ -55,4 +63,4 @@ def ack_disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, host="0.0.0.0")

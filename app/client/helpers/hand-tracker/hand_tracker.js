@@ -15,8 +15,9 @@ class HandTracker {
    * @param camera: instance HTML5 video element from which we capture the live stream
    * @param debugState: An object describing what debug controls to log
    * @param predCb: A callback for predictions
+   * @param noPredCb: A callback when no predictions of hand are found in the scene
    */
-  constructor(videoCanvas, camera, debugState, predCb) {
+  constructor(videoCanvas, camera, debugState, predCb, noPredCb) {
     tfjsWasm.setWasmPath(`https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@${version_wasm}/dist/tfjs-backend-wasm.wasm`);
     this.canvas = videoCanvas;
     this.camera = camera;
@@ -41,6 +42,7 @@ class HandTracker {
       }
     };
     this.predCb = predCb;
+    this.noPredCb = noPredCb;
   }
 
   drawPoint(ctx, y, x, r) {
@@ -140,8 +142,10 @@ class HandTracker {
             this.logPredictions(predictions, ctx, infoContainer);
           }
           // this.drawOnCanvas(predictions, freeFormCanvas);
+          this.predCb(predictions);
+        } else {
+          this.noPredCb(); // no predictions in this scene
         }
-        this.predCb(predictions);
       }
       // stats.end();
       requestAnimationFrame(frameLandmarks);

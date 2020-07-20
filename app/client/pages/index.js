@@ -16,6 +16,7 @@ class Home extends React.Component {
         showHandTracking: false
       }
     };
+    this.userActive = false;
   }
 
   updateDebugState = (key, value) => {
@@ -47,7 +48,7 @@ class Home extends React.Component {
   };
 
   initializeTracker(videoCanvas, camera) {
-    this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions);
+    this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions, this.handleUserAway);
     this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.tracker.camera.frontFacingCamera); // initialize the canvas
     this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
     this.tracker.main(this.info, this.drawingCanvas);
@@ -56,13 +57,25 @@ class Home extends React.Component {
   sendHandPredictions = (predictions) => {
     if (predictions.length > 0) {
       const indexFingerTip = 3;
+      this.userActive = true;
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
-      this.socket.sendHandPredictions([this.state.videoWidth - x, y]);
+      this.socket.sendHandPredictions([this.state.videoWidth - x, y, z]);
+    }
+  };
+
+  // when user is not actively using the invisible pen system
+  handleUserAway = () => {
+    const minInactivePeriod = 1000; // milliseconds
+    if (this.userActive) {
+      setTimeout(() => {
+        this.userActive = false;
+        this.socket.releaseMouse();
+      }, minInactivePeriod);
     }
   };
 
   setTrackingOrigin = () => {
-    // Give some time for the user to move their mouse to required location
+    // Give some time for the user to move their mouse to the origin of interest
     const timeout = 3;
     let timeoutTimer = timeout;
     const timer = setInterval(() => {
@@ -77,7 +90,7 @@ class Home extends React.Component {
     try {
       setTimeout(this.socket.setCurrMouseAsOrigin, timeout * 1000);
     } catch (error) {
-      this.info.textContent = `Unable to setup the tracker. Please try again in sometime and check logs`;
+      this.info.textContent = `Unable to setup the tracker. Please try again in sometime and check browser logs`;
       console.error(error);
     }
   };
@@ -91,12 +104,13 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    const domain = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "192.168.0.5";
     this.info = document.getElementById('info');
     this.videoCanvas = document.getElementById('output');
     const {contentWidth, contentHeight} = this.getContentSize(document.getElementById('drawing-canvas-div'));
     const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
     this.setState({videoWidth: contentWidth, videoHeight: contentHeight});
-    this.socket = new SocketIO("localhost", 5000, "test");
+    this.socket = new SocketIO(domain, 5000, "test");
 
     this.initializeTracker(this.videoCanvas, camera);
   }
