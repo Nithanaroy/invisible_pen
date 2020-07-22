@@ -1,6 +1,8 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import pyautogui
+import ssl
+from pathlib import Path
 
 app = Flask(__name__, template_folder="client/out/", static_folder="client/out/_next/")
 app.config['SECRET_KEY'] = 'secret!'
@@ -63,4 +65,10 @@ def ack_disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0")
+    cwd = Path(__file__).resolve().parent.as_posix()
+    # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    # context.verify_mode = ssl.CERT_REQUIRED
+    # context.load_verify_locations('/Users/nipasuma/Projects/invisble_pen/vendor/local-cert-generator/rootCA.pem')
+    # context.load_cert_chain(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key')
+    socketio.run(app, host="0.0.0.0", ssl_context=(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key'))
+    # socketio.run(app, host="0.0.0.0", ssl_context=context)

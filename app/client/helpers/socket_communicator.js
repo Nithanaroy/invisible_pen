@@ -4,7 +4,7 @@ class SocketIO {
   constructor(domain, port, namespace) {
     const portUrlPart = port.toString().length > 0 ? `:${port}` : "";
     const nsUrlPart = namespace.length > 0 ? `/${namespace}` : "";
-    this.s = socketio.connect(`http://${domain}${portUrlPart}${nsUrlPart}`);
+    this.s = socketio.connect(`https://${domain}${portUrlPart}${nsUrlPart}`);
     this.isConnected = false;
 
     this.s.on('connect', this.connected);
