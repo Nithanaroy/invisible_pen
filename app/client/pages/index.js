@@ -4,6 +4,8 @@ import HandTracker from "../helpers/hand-tracker/hand_tracker"
 import DrawingCanvas from "../helpers/drawing_canvas"
 import SocketIO from "../helpers/socket_communicator";
 
+import Alert from "./alert";
+
 class UserAwayTimer {
   /**
    * An interruptable, singleton timer class
@@ -36,7 +38,8 @@ class Home extends React.Component {
         showLiveCameraFeed: false,
         showIndexFingerTracking: false,
         showHandTracking: false
-      }
+      },
+      alert: {type: "primary", content: ""}
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
@@ -52,13 +55,13 @@ class Home extends React.Component {
 
     this.setState({isTracking: true});
     this.tracker.state.isTracking = true;
-    this.info.textContent = 'Tracking is ON';
+    this.updateAlert("Tracking is ON");
   };
 
   stopTracking = () => {
     this.setState({isTracking: false});
     this.tracker.state.isTracking = false;
-    this.info.textContent = "Tracking is OFF";
+    this.updateAlert("Tracking is OFF");
   };
 
   clearCanvas = () => {
@@ -74,7 +77,7 @@ class Home extends React.Component {
     this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions, this.handleUserAway);
     this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.tracker.camera.frontFacingCamera); // initialize the canvas
     this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
-    this.tracker.main(this.info, this.drawingCanvas);
+    this.tracker.main(this.updateAlert, this.drawingCanvas);
   }
 
   sendHandPredictions = (predictions) => {
@@ -98,16 +101,16 @@ class Home extends React.Component {
     const timer = setInterval(() => {
       if (timeoutTimer === 0) {
         clearInterval(timer);
-        this.info.textContent = `Your tracker is setup!`;
+        this.updateAlert("Your tracker is setup!")
       } else {
-        this.info.textContent = `Capturing mouse position in ${timeoutTimer}s`;
+        this.updateAlert(`Capturing mouse position in ${timeoutTimer}s`);
         timeoutTimer--;
       }
     }, 1000);
     try {
       setTimeout(this.socket.setCurrMouseAsOrigin, timeout * 1000);
     } catch (error) {
-      this.info.textContent = `Unable to setup the tracker. Please try again in sometime and check browser logs`;
+      this.updateAlert("Unable to setup the tracker. Please try again in sometime or check your browser logs if possible", "error");
       console.error(error);
     }
   };
@@ -120,14 +123,26 @@ class Home extends React.Component {
     }
   }
 
+  updateAlert = (message, type="primary") => {
+    const alertState = this.state.alert;
+    this.setState({ "alert": { ...alertState, "type": type, "content": message } });
+  }
+
+  onMouseControllerConnection = () => {
+    this.updateAlert("Connected to the mouse controller server in your home!", "success");
+  };
+
+  onMouseControllerDisconnection = () => {
+    this.updateAlert("Oops! lost the connection to server. Will update you once I'm able to reconnect again. Do check the browser logs if possible", "danger");
+  };
+
   componentDidMount() {
     const domain = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "192.168.0.5";
-    this.info = document.getElementById('info');
     this.videoCanvas = document.getElementById('output');
     const {contentWidth, contentHeight} = this.getContentSize(document.getElementById('drawing-canvas-div'));
     const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
     this.setState({videoWidth: contentWidth, videoHeight: contentHeight});
-    this.socket = new SocketIO(domain, 5000, "test");
+    this.socket = new SocketIO(domain, 5000, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
 
     this.initializeTracker(this.videoCanvas, camera);
   }
@@ -143,9 +158,9 @@ class Home extends React.Component {
 
         <main>
           <p className="display-2 text-center">Invisible Pen</p>
-          <div id="info" className="alert alert-primary"/>
+          <Alert {...this.state.alert} />
           <div className="card card-body col-md-6">
-            <h2 className="card-title">Debug Controls</h2>
+            <h2 className="card-title">Control Center</h2>
             <div className="form-group">
               <div className="form-check">
                 <input type="checkbox" id="liveFeed" className="form-check-input"
@@ -185,7 +200,6 @@ class Home extends React.Component {
               <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
             </div>
           </div>
-          {/*<div id="predictions"/>*/}
           <div className="row">
             <div id="canvas-wrapper" className="col-md-6" style={{
               "display": this.state.debug.showLiveCameraFeed ? "block" : "none"

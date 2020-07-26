@@ -82,16 +82,16 @@ class HandTracker {
     }
   }
 
-  logPredictions = (predictions, ctx, outputContainer) => {
+  logPredictions = (predictions, ctx, updateAlert) => {
     let log = "";
     const tipIndex = 3; // for each finger, handpose returns 3 landmarks / points
     for (let i = 0; i < predictions.length; i++) {
       const prediction = predictions[i];
       const tip = prediction["annotations"]["indexFinger"][tipIndex].map(coord => coord.toFixed(0)).join(", ");
-      log += `Index finger ${i + 1}'s tip is at (${tip}) <br />`;
+      log += `Index finger ${i + 1}'s tip is at (${tip})`;
       this.drawPoint(ctx, prediction["annotations"]["indexFinger"][tipIndex][1] - 2, prediction["annotations"]["indexFinger"][tipIndex][0] - 2, 3)
     }
-    outputContainer.innerHTML = log;
+    updateAlert(log);
     this.drawPoint(ctx, 5, 5, 3) // mark (0, 0) for reference
   };
 
@@ -109,7 +109,7 @@ class HandTracker {
     }
   }
 
-  async landmarksRealTime(video, infoContainer, freeFormCanvas) {
+  async landmarksRealTime(video, updateAlert, freeFormCanvas) {
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
     const ctx = this.canvas.getContext('2d');
@@ -139,7 +139,7 @@ class HandTracker {
             this.drawKeypoints(ctx, result, predictions[0].annotations);
           }
           if (this.state.debug.showIndexFingerTracking) {
-            this.logPredictions(predictions, ctx, infoContainer);
+            this.logPredictions(predictions, ctx, updateAlert);
           }
           // this.drawOnCanvas(predictions, freeFormCanvas);
           this.predCb(predictions);
@@ -154,7 +154,7 @@ class HandTracker {
     frameLandmarks();
   }
 
-  async main(infoContainer, freeFormCanvas) {
+  async main(updateAlert, freeFormCanvas) {
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
     // await tf.setBackend(state.backend); // comment to let tfjs automatically pick the best available backend
     await tf.ready();
@@ -162,9 +162,9 @@ class HandTracker {
 
     try {
       const video = await this.camera.loadVideo();
-      this.landmarksRealTime(video, infoContainer, freeFormCanvas);
+      this.landmarksRealTime(video, updateAlert, freeFormCanvas);
     } catch (e) {
-      infoContainer.textContent = e.message;
+      updateAlert(e.message, "danger");
       // throw e;
     }
   }

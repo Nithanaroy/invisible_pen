@@ -26,5 +26,5 @@ div.box p {
 }
 
 .alert:empty {
-    display: none;
+    visibility: hidden;
 }
