@@ -4,6 +4,28 @@ import HandTracker from "../helpers/hand-tracker/hand_tracker"
 import DrawingCanvas from "../helpers/drawing_canvas"
 import SocketIO from "../helpers/socket_communicator";
 
+class UserAwayTimer {
+  /**
+   * An interruptable, singleton timer class
+   * @param {int} duration: number of milliseconds to set the timer for each time when started
+   */
+  constructor(duration) {
+    this._isActive = false;
+    this._timerHandle = -1;
+    this._duration = duration;
+  }
+  startIfNotOn(timeUpCb) {
+    if (!this._isActive) {
+      this._timerHandle = setTimeout(timeUpCb, this._duration);
+      this._isActive = true;
+    }
+  }
+  stop() {
+    window.clearTimeout(this._timerHandle);
+    this._isActive = false;
+  }
+}
+
 class Home extends React.Component {
   constructor() {
     super();
@@ -16,7 +38,8 @@ class Home extends React.Component {
         showHandTracking: false
       }
     };
-    this.userActive = false;
+    const minInactivePeriod = 1000; // in milliseconds
+    this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
   }
 
   updateDebugState = (key, value) => {
@@ -57,7 +80,7 @@ class Home extends React.Component {
   sendHandPredictions = (predictions) => {
     if (predictions.length > 0) {
       const indexFingerTip = 3;
-      this.userActive = true;
+      this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
       this.socket.sendHandPredictions([this.state.videoWidth - x, y, z]);
     }
@@ -65,13 +88,7 @@ class Home extends React.Component {
 
   // when user is not actively using the invisible pen system
   handleUserAway = () => {
-    const minInactivePeriod = 1000; // milliseconds
-    if (this.userActive) {
-      setTimeout(() => {
-        this.userActive = false;
-        this.socket.releaseMouse();
-      }, minInactivePeriod);
-    }
+    this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
   };
 
   setTrackingOrigin = () => {
