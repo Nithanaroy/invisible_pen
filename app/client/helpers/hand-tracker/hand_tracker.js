@@ -123,6 +123,7 @@ class HandTracker {
     ctx.clearRect(0, 0, videoWidth, videoHeight);
     ctx.strokeStyle = 'red';
     ctx.fillStyle = 'red';
+    // TODO: Only invert canvas when rendering front camera feed
     ctx.translate(this.canvas.width, 0);
     ctx.scale(-1, 1);
 
@@ -141,7 +142,7 @@ class HandTracker {
           if (this.state.debug.showIndexFingerTracking) {
             this.logPredictions(predictions, ctx, updateAlert);
           }
-          // this.drawOnCanvas(predictions, freeFormCanvas);
+          // this.drawOnCanvas(predictions, freeFormCanvas); // useful when debugging predictions, without a mouse controller server
           this.predCb(predictions);
         } else {
           this.noPredCb(); // no predictions in this scene

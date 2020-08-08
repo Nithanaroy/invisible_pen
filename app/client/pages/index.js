@@ -91,7 +91,8 @@ class Home extends React.Component {
 
   // when user is not actively using the invisible pen system
   handleUserAway = () => {
-    this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
+    // comment this out if you have manual control enabled
+    // this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
   };
 
   setTrackingOrigin = () => {
@@ -133,16 +134,17 @@ class Home extends React.Component {
   };
 
   onMouseControllerDisconnection = () => {
+    // TODO: Give an option to force retry / test connection state, as the connected callback is sometimes not fired
     this.updateAlert("Oops! lost the connection to server. Will update you once I'm able to reconnect again. Do check the browser logs if possible", "danger");
   };
 
   componentDidMount() {
-    const domain = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "192.168.0.5";
+    const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
     this.videoCanvas = document.getElementById('output');
     const {contentWidth, contentHeight} = this.getContentSize(document.getElementById('drawing-canvas-div'));
     const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
     this.setState({videoWidth: contentWidth, videoHeight: contentHeight});
-    this.socket = new SocketIO(domain, 5000, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
+    this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
 
     this.initializeTracker(this.videoCanvas, camera);
   }

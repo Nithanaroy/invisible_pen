@@ -11,20 +11,26 @@ from pynput import keyboard
 import ssl
 from pathlib import Path
 from contextlib import contextmanager
+import logging
 
 
 app = Flask(__name__, template_folder="client/out/", static_folder="client/out/_next/")
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+logging.getLogger('werkzeug').disabled = True
+
 ORIGIN = {"x": 0, "y": 0}
-tracking_hotkey = keyboard.Key.space
+tracking_hotkey = keyboard.Key.f5
 tracking_on = False
 
 @app.route('/')
 def index():
     return "Hello World!"
 
+@socketio.on('test-connection', namespace='/test')
+def testConnection():
+    emit('connect', {'data': 'Connected'})
 
 @socketio.on('move-mouse', namespace='/test')
 def move_mouse(coords):
@@ -38,6 +44,7 @@ def move_mouse(coords):
 
 @socketio.on('release-mouse', namespace='/test')
 def release_mouse():
+    # print("Got a request to release the mouse")
     if tracking_on:
         print("Mouse released")
         pyautogui.mouseUp()
@@ -84,6 +91,8 @@ def on_key_press(key):
 def on_key_release(key):
     global tracking_on
     if key == tracking_hotkey:
+        print("Hotkey released, requesting to release the mouse from server side")
+        release_mouse()
         tracking_on = False
         # print('special key {0} pressed'.format(key))
 
@@ -106,5 +115,6 @@ if __name__ == '__main__':
     # context.load_cert_chain(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key')
     with keyboard_listerner() as l:
         socketio.run(app, host="0.0.0.0", ssl_context=(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key'))
+        # socketio.run(app, host="0.0.0.0")
     print("Done!!!")
     # socketio.run(app, host="0.0.0.0", ssl_context=context)
