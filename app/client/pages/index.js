@@ -35,31 +35,30 @@ class Home extends React.Component {
       videoWidth: 640, videoHeight: 500,
       isTracking: false,
       debug: {
-        showLiveCameraFeed: false,
+        showLiveCameraFeed: true,
         showIndexFingerTracking: false,
-        showHandTracking: false
+        showHandTracking: true
       },
-      alert: {type: "primary", content: ""}
+      alert: { type: "primary", content: "" }
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
   }
 
   updateDebugState = (key, value) => {
-    const newDebugState = {...this.state.debug, ...{[key]: value}};
-    this.setState({debug: newDebugState});
+    const newDebugState = { ...this.state.debug, ...{ [key]: value } };
+    this.setState({ debug: newDebugState });
     this.tracker.state.debug = newDebugState;
   };
 
   startTracking = () => {
-
-    this.setState({isTracking: true});
+    this.setState({ isTracking: true });
     this.tracker.state.isTracking = true;
     this.updateAlert("Tracking is ON");
   };
 
   stopTracking = () => {
-    this.setState({isTracking: false});
+    this.setState({ isTracking: false });
     this.tracker.state.isTracking = false;
     this.updateAlert("Tracking is OFF");
   };
@@ -85,6 +84,7 @@ class Home extends React.Component {
       const indexFingerTip = 3;
       this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
+      // TODO: laterally invert only if front camera is used
       this.socket.sendHandPredictions([this.state.videoWidth - x, y, z]);
     }
   };
@@ -95,36 +95,52 @@ class Home extends React.Component {
     // this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
   };
 
-  setTrackingOrigin = () => {
-    // Give some time for the user to move their mouse to the origin of interest
+  setTrackingOrigin = (originFor="mouse") => {
+    // Give some time for the user to move their mouse or tracking finger to the origin of interest
     const timeout = 3;
     let timeoutTimer = timeout;
     const timer = setInterval(() => {
       if (timeoutTimer === 0) {
         clearInterval(timer);
-        this.updateAlert("Your tracker is setup!")
+        this.updateAlert(`Your ${originFor} tracker is setup!`)
       } else {
-        this.updateAlert(`Capturing mouse position in ${timeoutTimer}s`);
+        this.updateAlert(`Capturing ${originFor} position in ${timeoutTimer}s`);
         timeoutTimer--;
       }
     }, 1000);
-    try {
-      setTimeout(this.socket.setCurrMouseAsOrigin, timeout * 1000);
-    } catch (error) {
-      this.updateAlert("Unable to setup the tracker. Please try again in sometime or check your browser logs if possible", "error");
-      console.error(error);
+    let trackingFn = null;
+    switch (originFor) {
+      case "mouse":
+        trackingFn = this.socket.setCurrMouseAsOrigin
+        break;
+      case "index finger":
+        trackingFn = this.socket.setCurrFingerAsOrigin
+        break;
+      default:
+        this.updateAlert(`Unable to setup the ${originFor} tracker. Please try again in sometime or check your browser logs if possible`, "error");
+        // console.error(error);
     }
+    
+    setTimeout(trackingFn, timeout * 1000);
   };
 
+  setFingerTrackingOrigin = () => {
+    if(!this.state.isTracking) {
+      this.updateAlert("Tracking needs to be ON to use the current finger's position as origin", "warning")
+    } else {
+      this.setTrackingOrigin("index finger");
+    }
+  }
+
   getContentSize(elem) {
-    let {height, width, paddingLeft, paddingTop, paddingRight, paddingBottom} = getComputedStyle(elem);
+    let { height, width, paddingLeft, paddingTop, paddingRight, paddingBottom } = getComputedStyle(elem);
     return {
       contentHeight: parseFloat(height) - parseFloat(paddingTop) - parseFloat(paddingBottom),
       contentWidth: parseFloat(width) - parseFloat(paddingLeft) - parseFloat(paddingRight)
     }
   }
 
-  updateAlert = (message, type="primary") => {
+  updateAlert = (message, type = "primary") => {
     const alertState = this.state.alert;
     this.setState({ "alert": { ...alertState, "type": type, "content": message } });
   }
@@ -141,9 +157,9 @@ class Home extends React.Component {
   componentDidMount() {
     const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
     this.videoCanvas = document.getElementById('output');
-    const {contentWidth, contentHeight} = this.getContentSize(document.getElementById('drawing-canvas-div'));
+    const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div'));
     const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
-    this.setState({videoWidth: contentWidth, videoHeight: contentHeight});
+    this.setState({ videoWidth: contentWidth, videoHeight: contentHeight });
     this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
 
     this.initializeTracker(this.videoCanvas, camera);
@@ -154,8 +170,8 @@ class Home extends React.Component {
       <div className="container-fluid">
         <Head>
           <title>Invisible Pen</title>
-          <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0, user-scalable=no"/>
-          <link rel="icon" href="/favicon.ico"/>
+          <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0, user-scalable=no" />
+          <link rel="icon" href="/favicon.ico" />
         </Head>
 
         <main>
@@ -166,47 +182,50 @@ class Home extends React.Component {
             <div className="form-group">
               <div className="form-check">
                 <input type="checkbox" id="liveFeed" className="form-check-input"
-                       checked={this.state.debug.showLiveCameraFeed}
-                       onChange={() => this.updateDebugState("showLiveCameraFeed", !this.state.debug.showLiveCameraFeed)}/>
+                  checked={this.state.debug.showLiveCameraFeed}
+                  onChange={() => this.updateDebugState("showLiveCameraFeed", !this.state.debug.showLiveCameraFeed)} />
                 <label htmlFor="liveFeed" className="form-check-label">Show Live Feed</label>
               </div>
 
               <div className="form-check">
                 <input type="checkbox" id="handTracking" className="form-check-input"
-                       checked={this.state.debug.showHandTracking}
-                       onChange={() => this.updateDebugState("showHandTracking", !this.state.debug.showHandTracking)}/>
+                  checked={this.state.debug.showHandTracking}
+                  onChange={() => this.updateDebugState("showHandTracking", !this.state.debug.showHandTracking)} />
                 <label htmlFor="handTracking" className="form-check-label">Show Hand Tracking</label>
               </div>
               <div className="form-check">
                 <input type="checkbox" id="indexFingerTracking" className="form-check-input"
-                       checked={this.state.debug.showIndexFingerTracking}
-                       onChange={() => this.updateDebugState("showIndexFingerTracking", !this.state.debug.showIndexFingerTracking)}/>
+                  checked={this.state.debug.showIndexFingerTracking}
+                  onChange={() => this.updateDebugState("showIndexFingerTracking", !this.state.debug.showIndexFingerTracking)} />
                 <label htmlFor="indexFingerTracking" className="form-check-label">Show Index Finger Tracking</label>
               </div>
             </div>
             <div className="">
               <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
-                      title="Reloads the model">Flip Camera
+                title="Reloads the model">Flip Camera
               </button>
-              <button type="button" className="btn btn-info mr-3" onClick={this.setTrackingOrigin}
-                      title="Use the current mouse position as the top-left corner of the screen">Setup Tracker
+              <button type="button" className="btn btn-info mr-3" onClick={() => this.setTrackingOrigin("mouse")}
+                title="Use the current mouse position as the top-left corner of the screen">Setup mouse tracker
+              </button>
+              <button type="button" className="btn btn-info mr-3" onClick={this.setFingerTrackingOrigin}
+                title="Use the current index finger position as the top-left corner of the screen (requires tracking to be on)">Setup hand tracker
               </button>
               <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
-                      onClick={this.startTracking}>
+                onClick={this.startTracking}>
                 Start Tracking
               </button>
               <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
-                      onClick={this.stopTracking}>
+                onClick={this.stopTracking}>
                 Stop Tracking
               </button>
               <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
             </div>
           </div>
-          <div className="row">
+          <div className="row mt-3">
             <div id="canvas-wrapper" className="col-md-6" style={{
               "display": this.state.debug.showLiveCameraFeed ? "block" : "none"
             }}>
-              <canvas id="output"/>
+              <canvas id="output" />
               <video id="video" playsInline style={{
                 "WebkitTransform": "scaleX(-1)",
                 "transform": "scaleX(-1)",
@@ -218,7 +237,7 @@ class Home extends React.Component {
               </video>
             </div>
             <div id="drawing-canvas-div" className="col-md-6">
-              <canvas id="drawing-canvas" height={this.state.videoHeight} width={this.state.videoWidth}/>
+              <canvas id="drawing-canvas" height={this.state.videoHeight} width={this.state.videoWidth} />
             </div>
           </div>
         </main>

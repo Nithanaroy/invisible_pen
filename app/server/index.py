@@ -12,17 +12,16 @@ import ssl
 from pathlib import Path
 from contextlib import contextmanager
 import logging
-
+from mouse_controller import MouseController
 
 app = Flask(__name__, template_folder="client/out/", static_folder="client/out/_next/")
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", cookie=None)
 
 logging.getLogger('werkzeug').disabled = True
 
-ORIGIN = {"x": 0, "y": 0}
+mc = MouseController()
 tracking_hotkey = keyboard.Key.f5
-tracking_on = False
 
 @app.route('/')
 def index():
@@ -36,36 +35,36 @@ def testConnection():
 def move_mouse(coords):
     # emit('my response', {'data': message['data']})
     # print(coords)
-    # pyautogui.dragTo(message[0] + ORIGIN["x"], message[1] + ORIGIN["y"], button='left')
-    # pyautogui.moveTo(coords[0] + ORIGIN["x"], coords[1] + ORIGIN["y"], button='left')
-    if tracking_on:
-        pyautogui.mouseDown(coords[0] + ORIGIN["x"], coords[1] + ORIGIN["y"], button='left')
+    # pyautogui.dragTo(message[0] + origin[0], message[1] + origin[1], button='left')
+    # pyautogui.moveTo(coords[0] + origin[0], coords[1] + origin[1], button='left')
+    mc.curr_finger_pos = coords
+    if mc.is_tracking_on():
+        mouse_origin = mc.get_mouse_origin()
+        finger_origin = mc.get_finger_origin()
+        pyautogui.mouseDown(coords[0] + mouse_origin[0] - finger_origin[0], coords[1] + mouse_origin[1] - finger_origin[1], button='left')
 
 
 @socketio.on('release-mouse', namespace='/test')
 def release_mouse():
     # print("Got a request to release the mouse")
-    if tracking_on:
+    if mc.is_tracking_on():
         print("Mouse released")
         pyautogui.mouseUp()
 
 
-@socketio.on('set-origin-manual', namespace='/test')
+@socketio.on('set-mouse-origin-manual', namespace='/test')
 def read_message(message):
-    set_origin(message[0], message[1])
+    mc.set_mouse_origin(message[0], message[1])
 
 
-@socketio.on('set-origin-auto', namespace='/test')
+@socketio.on('set-mouse-origin', namespace='/test')
 def read_message():
     current_mouse_pos = pyautogui.position()
-    set_origin(current_mouse_pos.x, current_mouse_pos.y)
+    mc.set_mouse_origin(current_mouse_pos.x, current_mouse_pos.y)
 
-
-def set_origin(x, y):
-    global ORIGIN
-    ORIGIN["x"], ORIGIN["y"] = x, y
-    print(f"Updated origin to ({x}, {y})")
-
+@socketio.on('set-finger-origin', namespace='/test')
+def read_message():
+    mc.save_curr_finger_as_origin()
 
 @socketio.on('my broadcast event', namespace='/test')
 def read_message(message):
@@ -83,17 +82,15 @@ def ack_disconnect():
     print('Client disconnected')
 
 def on_key_press(key):
-    global tracking_on
     if key == tracking_hotkey:
-        tracking_on = True
+        mc.set_tracking_state(True)
         # print('special key {0} pressed'.format(key))
 
 def on_key_release(key):
-    global tracking_on
     if key == tracking_hotkey:
         print("Hotkey released, requesting to release the mouse from server side")
         release_mouse()
-        tracking_on = False
+        mc.set_tracking_state(False)
         # print('special key {0} pressed'.format(key))
 
 @contextmanager

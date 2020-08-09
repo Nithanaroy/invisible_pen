@@ -9,3 +9,15 @@ Below is a basic screencast showing how the custom detection model detects the w
 <a href="https://youtu.be/nt8XFkXnr5w" target="_blank"><img src="https://i.imgur.com/2zHNkgM.jpg"/></a>
 
 For a **live demo** of the latest app & model visit https://invisible-pen.vercel.app/
+
+## Development Setup
+
+### Client
+1. `npm run dev` in `app/client` folder which starts a react server on http://0.0.0.0:3000
+2. Install ngrok and forward react server's port using `ngrok http 3000`
+3. Access the pasted HTTPS from the URL pasted by ngrok, without a VPN
+4. Steps 2 and 3 wont be necessary in production as we use vercel hosting service for deployment. HTTPS URL is needed to access webcam on phone and ngrok helps with this tunneling, and is convinient while development as it also supports hot reload facility
+
+### Server
+1. `conda activate invipen`
+1. Run `python app/index.py` to start the mouse controller server inside the activated virtual environment

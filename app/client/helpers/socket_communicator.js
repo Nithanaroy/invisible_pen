@@ -31,7 +31,11 @@ class SocketIO {
   };
 
   setCurrMouseAsOrigin = () => {
-    this.s.emit("set-origin-auto");
+    this.s.emit("set-mouse-origin");
+  };
+
+  setCurrFingerAsOrigin = () => {
+    this.s.emit("set-finger-origin");
   };
 
   connected = () => {

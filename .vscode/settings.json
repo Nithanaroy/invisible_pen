@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/Users/nipasuma/opt/miniconda3/envs/invipen/bin/python"
+    "python.pythonPath": "/Users/nipasuma/opt/miniconda3/envs/invipen/bin/python",
+    "python.formatting.provider": "autopep8"
 }
