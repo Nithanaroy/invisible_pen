@@ -33,6 +33,7 @@ class Home extends React.Component {
     super();
     this.state = {
       videoWidth: 640, videoHeight: 500,
+      usingFrontCamera: true, // choosing this safe default as webcams are usually front facing
       isTracking: false,
       debug: {
         showLiveCameraFeed: true,
@@ -67,16 +68,18 @@ class Home extends React.Component {
     this.drawingCanvas.cleanCanvas();
   };
 
-  flipCamera = () => {
-    const camera = new Camera(document.getElementById('video'), this.state.videoWidth, this.state.videoHeight, !this.tracker.camera.frontFacingCamera);
-    this.initializeTracker(this.videoCanvas, camera);
+  flipCamera = async () => {
+    const video = document.getElementById('video')
+    const camera = new Camera(video, this.state.videoWidth, this.state.videoHeight, !this.state.usingFrontCamera);
+    await this.initializeTracker(this.videoCanvas, camera); // wait for the camera to flip if possible
+    this.syncLiveVideoState()
   };
 
   initializeTracker(videoCanvas, camera) {
     this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions, this.handleUserAway);
-    this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.tracker.camera.frontFacingCamera); // initialize the canvas
-    this.tracker.state.isTracking = this.state.isTracking; //TODO: Not a scalable way to keep both the states in sync
-    this.tracker.main(this.updateAlert, this.drawingCanvas);
+    this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.state.usingFrontCamera); // initialize the canvas
+    this.tracker.state.isTracking = this.state.isTracking; // TODO: Not a scalable way to keep both the states in sync
+    return this.tracker.main(this.updateAlert, this.drawingCanvas);
   }
 
   sendHandPredictions = (predictions) => {
@@ -84,8 +87,8 @@ class Home extends React.Component {
       const indexFingerTip = 3;
       this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
-      // TODO: laterally invert only if front camera is used
-      this.socket.sendHandPredictions([this.state.videoWidth - x, y, z]);
+      const correctedX = this.state.usingFrontCamera ? this.state.videoWidth - x : x; // adjust lateral inversion if any
+      this.socket.sendHandPredictions([correctedX, y, z]);
     }
   };
 
@@ -154,15 +157,42 @@ class Home extends React.Component {
     this.updateAlert("Oops! lost the connection to server. Will update you once I'm able to reconnect again. Do check the browser logs if possible", "danger");
   };
 
-  componentDidMount() {
+  syncLiveVideoState = () => {
+    // assumes the video stream is loaded
+    try {
+      const { facingMode, height, width } = this.webcam.srcObject.getVideoTracks()[0].getSettings()
+      const isFrontFacing = facingMode === "environment" || true;
+      this.setState({usingFrontCamera: isFrontFacing, videoWidth: width, videoHeight: height});
+      this.updateAlert(`Currently tracking via ${isFrontFacing ? "front": "back"} camera`)
+    } catch (error) {
+      this.updateAlert("Unable to identify whether front or back camera is being used. Please use front camera if available for consistent results", "warning")
+      console.error(error)
+      this.setState({ usingFrontCamera: true })
+    }
+  }
+
+  async componentDidMount() {
+    this.webcam = document.getElementById('video');
     const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
     this.videoCanvas = document.getElementById('output');
     const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div'));
-    const camera = new Camera(document.getElementById('video'), contentWidth, contentHeight);
-    this.setState({ videoWidth: contentWidth, videoHeight: contentHeight });
+    const camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
     this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
 
-    this.initializeTracker(this.videoCanvas, camera);
+    await this.initializeTracker(this.videoCanvas, camera); // wait for the camera to load
+    this.syncLiveVideoState();
+    this.mediaDebugInfo();
+  }
+
+  mediaDebugInfo() {
+    const track = document.getElementById('video').srcObject.getVideoTracks()[0];
+    const msg = `<pre>
+    Video Track Info:
+    Constraints: ${JSON.stringify(track.getConstraints())}
+    Capabilities: ${JSON.stringify(track.getCapabilities())}
+    Settings: ${JSON.stringify(track.getSettings())}
+    </pre>`;
+    document.getElementById("debug-container").innerHTML = msg;
   }
 
   render() {
@@ -177,6 +207,7 @@ class Home extends React.Component {
         <main>
           <p className="display-2 text-center">Invisible Pen</p>
           <Alert {...this.state.alert} />
+          <p id="debug-container"></p>
           <div className="card card-body col-md-6">
             <h2 className="card-title">Control Center</h2>
             <div className="form-group">

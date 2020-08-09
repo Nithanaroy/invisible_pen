@@ -18,7 +18,7 @@
 import {isMobile} from './demo_util';
 
 class Camera {
-  constructor(video, videoWidth = 600, videoHeight = 500, frontFacingCamera = false) {
+  constructor(video, videoWidth, videoHeight, frontFacingCamera) {
     this.video = video;
     this.videoWidth = videoWidth;
     this.videoHeight = videoHeight;
