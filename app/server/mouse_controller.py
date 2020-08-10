@@ -4,7 +4,7 @@ class MouseController:
         self._mouse_origin = (0, 0)
         self._finger_origin = (0, 0)
         self._tracking_on = False
-        self.curr_finger_pos = (0, 0, 0)
+        self.curr_finger_pos = (0, 0)
 
     def get_mouse_origin(self):
         return self._mouse_origin

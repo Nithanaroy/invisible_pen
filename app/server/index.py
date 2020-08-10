@@ -41,7 +41,10 @@ def move_mouse(coords):
     if mc.is_tracking_on():
         mouse_origin = mc.get_mouse_origin()
         finger_origin = mc.get_finger_origin()
-        pyautogui.mouseDown(coords[0] + mouse_origin[0] - finger_origin[0], coords[1] + mouse_origin[1] - finger_origin[1], button='left')
+        # pyautogui.mouseDown(coords[0] + mouse_origin[0] - finger_origin[0],
+                            # coords[1] + mouse_origin[1] - finger_origin[1], button='left')
+        pyautogui.moveTo(coords[0] + mouse_origin[0] - finger_origin[0],
+                            coords[1] + mouse_origin[1] - finger_origin[1])
 
 
 @socketio.on('release-mouse', namespace='/test')
@@ -49,7 +52,7 @@ def release_mouse():
     # print("Got a request to release the mouse")
     if mc.is_tracking_on():
         print("Mouse released")
-        pyautogui.mouseUp()
+        pyautogui.mouseUp(button="left") # TODO: for some reason mouse button is still pressed, when moving with mouseDown in move_mouse()
 
 
 @socketio.on('set-mouse-origin-manual', namespace='/test')
@@ -84,12 +87,13 @@ def ack_disconnect():
 def on_key_press(key):
     if key == tracking_hotkey:
         mc.set_tracking_state(True)
-        # print('special key {0} pressed'.format(key))
+        pyautogui.mouseDown()
 
 def on_key_release(key):
     if key == tracking_hotkey:
         print("Hotkey released, requesting to release the mouse from server side")
-        release_mouse()
+        # release_mouse()
+        pyautogui.mouseUp()
         mc.set_tracking_state(False)
         # print('special key {0} pressed'.format(key))
 
@@ -108,10 +112,10 @@ if __name__ == '__main__':
     cwd = Path(__file__).resolve().parent.as_posix()
     # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     # context.verify_mode = ssl.CERT_REQUIRED
-    # context.load_verify_locations('/Users/nipasuma/Projects/invisble_pen/vendor/local-cert-generator/rootCA.pem')
+    # context.load_verify_locations(f'{cwd}/certs/trusted-openssl/rootCA.pem')
     # context.load_cert_chain(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key')
     with keyboard_listerner() as l:
         socketio.run(app, host="0.0.0.0", ssl_context=(f'{cwd}/certs/trusted-openssl/server.crt', f'{cwd}/certs/trusted-openssl/server.key'))
         # socketio.run(app, host="0.0.0.0")
+        # socketio.run(app, host="192.168.0.5", ssl_context=context)
     print("Done!!!")
-    # socketio.run(app, host="0.0.0.0", ssl_context=context)

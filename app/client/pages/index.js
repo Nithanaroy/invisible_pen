@@ -40,7 +40,8 @@ class Home extends React.Component {
         showIndexFingerTracking: false,
         showHandTracking: true
       },
-      alert: { type: "primary", content: "" }
+      alert: { type: "primary", content: "" },
+      trackerOrientationCoordsRemap: {"x": "x", "y": "y", "z": "z"}
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
@@ -87,10 +88,17 @@ class Home extends React.Component {
       const indexFingerTip = 3;
       this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
-      const correctedX = this.state.usingFrontCamera ? this.state.videoWidth - x : x; // adjust lateral inversion if any
-      this.socket.sendHandPredictions([correctedX, y, z]);
+      this.socket.sendHandPredictions(this.translateCoords({x, y, z}));
     }
   };
+
+  // predCoords should be of the form, {x: 10, y: 20, z: 5}
+  translateCoords = (predCoords) => {
+    const {x, y, z} = this.state.trackerOrientationCoordsRemap;
+    const [newX, newY, newZ] = [predCoords[x], predCoords[y], predCoords[z]]
+    const correctedX = this.state.usingFrontCamera ? this.state.videoWidth - newX : newX; // adjust lateral inversion if any
+    return [correctedX, newY]
+  }
 
   // when user is not actively using the invisible pen system
   handleUserAway = () => {
@@ -161,14 +169,23 @@ class Home extends React.Component {
     // assumes the video stream is loaded
     try {
       const { facingMode, height, width } = this.webcam.srcObject.getVideoTracks()[0].getSettings()
-      const isFrontFacing = facingMode === "environment" || true;
+      const isFrontFacing = facingMode === "environment" ? false : true;
       this.setState({usingFrontCamera: isFrontFacing, videoWidth: width, videoHeight: height});
       this.updateAlert(`Currently tracking via ${isFrontFacing ? "front": "back"} camera`)
+      this.mediaDebugInfo();
     } catch (error) {
       this.updateAlert("Unable to identify whether front or back camera is being used. Please use front camera if available for consistent results", "warning")
       console.error(error)
       this.setState({ usingFrontCamera: true })
     }
+  }
+
+  loadTrackerOrientation = () => {
+    // TODO: use phone orientation enum instead of taking x, y translations from user
+    const x = (new URLSearchParams(window.location.search)).get("x") || "x";
+    const y = (new URLSearchParams(window.location.search)).get("y") || "y";
+    const z = (new URLSearchParams(window.location.search)).get("z") || "z";
+    this.setState({trackerOrientationCoordsRemap: {x, y, z}})
   }
 
   async componentDidMount() {
@@ -178,10 +195,10 @@ class Home extends React.Component {
     const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div'));
     const camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
     this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
+    this.loadTrackerOrientation();
 
     await this.initializeTracker(this.videoCanvas, camera); // wait for the camera to load
     this.syncLiveVideoState();
-    this.mediaDebugInfo();
   }
 
   mediaDebugInfo() {
