@@ -18,6 +18,13 @@
 import {isMobile} from './demo_util';
 
 class Camera {
+  /**
+   * Create a camera instance with following requests. Browser may or may not apply all these settings
+   * @param {HTML5 video element} video instance of video DOM
+   * @param {number} videoWidth intended width of the video stream
+   * @param {number} videoHeight intended height of the video stream
+   * @param {boolean} frontFacingCamera intended camera mode
+   */
   constructor(video, videoWidth, videoHeight, frontFacingCamera) {
     this.video = video;
     this.videoWidth = videoWidth;
@@ -48,6 +55,10 @@ class Camera {
         height: mobile ? undefined : this.videoHeight,
       },
     });
+    const {isFrontFacing, height, width} = this.cameraState; // actual settings applied by the browser
+    this.frontFacingCamera = isFrontFacing;
+    this.height = height;
+    this.width = width;
 
     return new Promise((resolve) => {
       video.onloadedmetadata = () => {
@@ -59,8 +70,13 @@ class Camera {
   async loadVideo() {
     const video = await this.setupCamera();
     video.play();
-
     return video;
+  }
+
+  get cameraState() {
+    const { facingMode, height, width } = this.video.srcObject.getVideoTracks()[0].getSettings()
+    const isFrontFacing = facingMode === "environment" ? false : true;
+    return {isFrontFacing, height, width};
   }
 }
 

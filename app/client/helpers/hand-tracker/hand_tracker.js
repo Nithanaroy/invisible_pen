@@ -4,8 +4,8 @@
 import * as handpose from '@tensorflow-models/handpose';
 import * as tf from '@tensorflow/tfjs';
 import * as tfjsWasm from '@tensorflow/tfjs-backend-wasm';
-import {version_wasm} from '@tensorflow/tfjs-backend-wasm';
-import {isMobile} from "../demo_util"
+import { version_wasm } from '@tensorflow/tfjs-backend-wasm';
+import { isMobile } from "../demo_util"
 
 class HandTracker {
 
@@ -123,9 +123,10 @@ class HandTracker {
     ctx.clearRect(0, 0, videoWidth, videoHeight);
     ctx.strokeStyle = 'red';
     ctx.fillStyle = 'red';
-    // TODO: Only invert canvas when rendering front camera feed
-    ctx.translate(this.canvas.width, 0);
-    ctx.scale(-1, 1);
+    if (this.camera.frontFacingCamera) {
+      ctx.translate(this.canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
 
     const frameLandmarks = async () => {
       // stats.begin();
@@ -155,9 +156,9 @@ class HandTracker {
     frameLandmarks();
   }
 
-  async main(updateAlert, freeFormCanvas) {
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    // await tf.setBackend(state.backend); // comment to let tfjs automatically pick the best available backend
+  main = async (updateAlert, freeFormCanvas) => {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.mediaDevices.getUserMedia;
+    await tf.setBackend(this.state.backend); // comment to let tfjs automatically pick the best available backend
     await tf.ready();
     this.model = await handpose.load();
 

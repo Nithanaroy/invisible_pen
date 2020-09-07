@@ -71,8 +71,8 @@ class Home extends React.Component {
 
   flipCamera = async () => {
     const video = document.getElementById('video')
-    const camera = new Camera(video, this.state.videoWidth, this.state.videoHeight, !this.state.usingFrontCamera);
-    await this.initializeTracker(this.videoCanvas, camera); // wait for the camera to flip if possible
+    this.camera = new Camera(video, this.state.videoWidth, this.state.videoHeight, !this.state.usingFrontCamera);
+    await this.initializeTracker(this.videoCanvas, this.camera); // wait for the camera to flip if possible
     this.syncLiveVideoState()
   };
 
@@ -168,8 +168,7 @@ class Home extends React.Component {
   syncLiveVideoState = () => {
     // assumes the video stream is loaded
     try {
-      const { facingMode, height, width } = this.webcam.srcObject.getVideoTracks()[0].getSettings()
-      const isFrontFacing = facingMode === "environment" ? false : true;
+      const { isFrontFacing, height, width } = this.camera.cameraState; // actual settings applied by the browser
       this.setState({usingFrontCamera: isFrontFacing, videoWidth: width, videoHeight: height});
       this.updateAlert(`Currently tracking via ${isFrontFacing ? "front": "back"} camera`)
       this.mediaDebugInfo();
@@ -182,9 +181,10 @@ class Home extends React.Component {
 
   loadTrackerOrientation = () => {
     // TODO: use phone orientation enum instead of taking x, y translations from user
-    const x = (new URLSearchParams(window.location.search)).get("x") || "x";
-    const y = (new URLSearchParams(window.location.search)).get("y") || "y";
-    const z = (new URLSearchParams(window.location.search)).get("z") || "z";
+    const urlSearcher = new URLSearchParams(window.location.search)
+    const x = urlSearcher.get("x") || "x";
+    const y = urlSearcher.get("y") || "y";
+    const z = urlSearcher.get("z") || "z";
     this.setState({trackerOrientationCoordsRemap: {x, y, z}})
   }
 
@@ -193,11 +193,11 @@ class Home extends React.Component {
     const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
     this.videoCanvas = document.getElementById('output');
     const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div'));
-    const camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
+    this.camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
     this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
     this.loadTrackerOrientation();
 
-    await this.initializeTracker(this.videoCanvas, camera); // wait for the camera to load
+    await this.initializeTracker(this.videoCanvas, this.camera); // wait for the camera to load
     this.syncLiveVideoState();
   }
 

@@ -10,14 +10,31 @@ Below is a basic screencast showing how the custom detection model detects the w
 
 For a **live demo** of the latest app & model visit https://invisible-pen.vercel.app/
 
+## Setup
+
+### On Phone
+- Visit https://bit.ly/invisible-pen on your phone and give permission to access your webcam. The phone tracks your hand movements and sends them to your laptop wirelessly via websockets.
+
+### On Laptop
+- Install [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/) and create an environment, say `invipen`, using commands listed [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file)
+- [Install uWSGI](https://uwsgi-docs.readthedocs.io/en/latest/Install.html) for speedy socket based wireless communication between the phone and laptop. `brew install uwsgi` works on Mac as described at http://macappstore.org/uwsgi/ 
+- Open a new terminal session for the changes to kick in
+- Install [gevent](https://uwsgi-docs.readthedocs.io/en/latest/Gevent.html) for high performance async computing with uWSGI. It depends on libraries like `libevent`, which can be installed via `brew install libevent` on Mac
+- Open a new terminal session for the changes to kick in
+- Generate certificates and place the .crt, .pem, .key files in a new folder called app/server/certs/trusted-openssl
+- Start server
+
 ## Development Setup
 
 ### Client
-1. `npm run dev` in `app/client` folder which starts a react server on http://0.0.0.0:3000
-2. Install ngrok and forward react server's port using `ngrok http 3000`
-3. Access the pasted HTTPS from the URL pasted by ngrok, without a VPN
-4. Steps 2 and 3 wont be necessary in production as we use vercel hosting service for deployment. HTTPS URL is needed to access webcam on phone and ngrok helps with this tunneling, and is convinient while development as it also supports hot reload facility
+- This website is eventually launched on a mobile device, which tracks the user's hand position
+- `npm run dev` in `app/client` folder which starts a react server on http://0.0.0.0:3000
+
+#### To test on phone
+- Install ngrok and forward react server's port using `ngrok http 3000`
+- Access the pasted HTTPS from the URL pasted by ngrok. You may have to turn off any VPN gateway to access the site. HTTPS URL is needed to access webcam on phone and ngrok helps with this tunneling, and is convinient while development as it also supports hot reload facility
 
 ### Server
-1. `conda activate invipen`
-1. Run `python app/index.py` to start the mouse controller server inside the activated virtual environment
+- `conda activate invipen`
+- Run `python app/index.py` to start the mouse controller server inside the activated virtual environment
+- Note: remember to remove gevent or eventlet to start the server in development mode as shared at https://flask-socketio.readthedocs.io/en/latest/#embedded-server
