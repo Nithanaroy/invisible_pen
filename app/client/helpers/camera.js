@@ -16,6 +16,7 @@
  */
 
 import {isMobile} from './demo_util';
+// import { shimGetUserMedia, shimConstraints } from "./media_shims/safari_camera_shim";
 
 class Camera {
   /**
@@ -30,6 +31,9 @@ class Camera {
     this.videoWidth = videoWidth;
     this.videoHeight = videoHeight;
     this.frontFacingCamera = frontFacingCamera;
+
+    // shimGetUserMedia();
+    // shimConstraints();
   }
 
 
@@ -53,6 +57,8 @@ class Camera {
         facingMode: this.frontFacingCamera ? "user" : "environment",
         width: mobile ? undefined : this.videoWidth,
         height: mobile ? undefined : this.videoHeight,
+        frameRate: 20,
+        resizeMode: ["crop-and-scale"]
       },
     });
     const {isFrontFacing, height, width} = this.cameraState; // actual settings applied by the browser

@@ -32,7 +32,9 @@ class Home extends React.Component {
   constructor() {
     super();
     this.state = {
-      videoWidth: 640, videoHeight: 500,
+      videoWidth: 300, videoHeight: 169,
+      drawingCanvasWidth: 300, drawingCanvasHeight: 169,
+
       usingFrontCamera: true, // choosing this safe default as webcams are usually front facing
       isTracking: false,
       debug: {
@@ -41,10 +43,27 @@ class Home extends React.Component {
         showHandTracking: true
       },
       alert: { type: "primary", content: "" },
-      trackerOrientationCoordsRemap: {"x": "x", "y": "y", "z": "z"}
+      trackerOrientationCoordsRemap: { "x": "x", "y": "y", "z": "z" },
+
+      shouldSendCoordsToServer: false, // to reduce the number of messages sent to the backend server
+      transmissionHotKeyCode: 116, // F5 key
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
+  }
+
+  enableCoordsTransmission = (keyDownEvent) => {
+    if (keyDownEvent.which === this.state.transmissionHotKeyCode) {
+      if (!this.state.shouldSendCoordsToServer) {
+        this.setState({ shouldSendCoordsToServer: true });
+      }
+    }
+  }
+
+  disableCoordsTransmission = (keyUpEvent) => {
+    if (keyUpEvent.which === this.state.transmissionHotKeyCode) {
+      this.setState({ shouldSendCoordsToServer: false });
+    }
   }
 
   updateDebugState = (key, value) => {
@@ -56,13 +75,13 @@ class Home extends React.Component {
   startTracking = () => {
     this.setState({ isTracking: true });
     this.tracker.state.isTracking = true;
-    this.updateAlert("Tracking is ON");
+    this.updateAlert("Tracking is ON. Hold F5 to send coords to server");
   };
 
   stopTracking = () => {
     this.setState({ isTracking: false });
     this.tracker.state.isTracking = false;
-    this.updateAlert("Tracking is OFF");
+    this.updateAlert("Tracking is OFF. Will not send hand positions to server. Hold F5 again to resume");
   };
 
   clearCanvas = () => {
@@ -84,18 +103,18 @@ class Home extends React.Component {
   }
 
   sendHandPredictions = (predictions) => {
-    if (predictions.length > 0) {
+    if (predictions.length > 0 && this.state.shouldSendCoordsToServer) {
       const indexFingerTip = 3;
       this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
-      this.socket.sendHandPredictions(this.translateCoords({x, y, z}));
+      this.socket.sendHandPredictions(this.translateCoords({ x, y, z }));
     }
   };
 
   // predCoords should be of the form, {x: 10, y: 20, z: 5}
   translateCoords = (predCoords) => {
-    const {x, y, z} = this.state.trackerOrientationCoordsRemap;
-    const [newX, newY, newZ] = [predCoords[x], predCoords[y], predCoords[z]]
+    const { x, y, z } = this.state.trackerOrientationCoordsRemap;
+    const [newX, newY, newZ] = [predCoords[x] * this.scaling.x, predCoords[y] * this.scaling.y, predCoords[z]]
     const correctedX = this.state.usingFrontCamera ? this.state.videoWidth - newX : newX; // adjust lateral inversion if any
     return [correctedX, newY]
   }
@@ -106,7 +125,7 @@ class Home extends React.Component {
     // this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
   };
 
-  setTrackingOrigin = (originFor="mouse") => {
+  setTrackingOrigin = (originFor = "mouse") => {
     // Give some time for the user to move their mouse or tracking finger to the origin of interest
     const timeout = 3;
     let timeoutTimer = timeout;
@@ -129,14 +148,14 @@ class Home extends React.Component {
         break;
       default:
         this.updateAlert(`Unable to setup the ${originFor} tracker. Please try again in sometime or check your browser logs if possible`, "error");
-        // console.error(error);
+      // console.error(error);
     }
-    
+
     setTimeout(trackingFn, timeout * 1000);
   };
 
   setFingerTrackingOrigin = () => {
-    if(!this.state.isTracking) {
+    if (!this.state.isTracking) {
       this.updateAlert("Tracking needs to be ON to use the current finger's position as origin", "warning")
     } else {
       this.setTrackingOrigin("index finger");
@@ -169,8 +188,8 @@ class Home extends React.Component {
     // assumes the video stream is loaded
     try {
       const { isFrontFacing, height, width } = this.camera.cameraState; // actual settings applied by the browser
-      this.setState({usingFrontCamera: isFrontFacing, videoWidth: width, videoHeight: height});
-      this.updateAlert(`Currently tracking via ${isFrontFacing ? "front": "back"} camera`)
+      this.setState({ usingFrontCamera: isFrontFacing, videoWidth: width, videoHeight: height });
+      this.updateAlert(`Currently tracking via ${isFrontFacing ? "front" : "back"} camera`)
       this.mediaDebugInfo();
     } catch (error) {
       this.updateAlert("Unable to identify whether front or back camera is being used. Please use front camera if available for consistent results", "warning")
@@ -185,20 +204,31 @@ class Home extends React.Component {
     const x = urlSearcher.get("x") || "x";
     const y = urlSearcher.get("y") || "y";
     const z = urlSearcher.get("z") || "z";
-    this.setState({trackerOrientationCoordsRemap: {x, y, z}})
+    this.setState({ trackerOrientationCoordsRemap: { x, y, z } })
   }
 
   async componentDidMount() {
     this.webcam = document.getElementById('video');
     const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
     this.videoCanvas = document.getElementById('output');
-    const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div'));
+    // const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div')); // match camera's resolution with canvas resolution
+    const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('canvas-wrapper'));
     this.camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
     this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
     this.loadTrackerOrientation();
 
     await this.initializeTracker(this.videoCanvas, this.camera); // wait for the camera to load
     this.syncLiveVideoState();
+
+    document.addEventListener("keydown", this.enableCoordsTransmission);
+    document.addEventListener("keyup", this.disableCoordsTransmission);
+  }
+
+  get scaling() {
+    return {
+      x: this.state.drawingCanvasWidth / this.state.videoWidth,
+      y: this.state.drawingCanvasHeight / this.state.videoHeight
+    }
   }
 
   mediaDebugInfo() {
@@ -225,69 +255,77 @@ class Home extends React.Component {
           <p className="display-2 text-center">Invisible Pen</p>
           <Alert {...this.state.alert} />
           <p id="debug-container"></p>
-          <div className="card card-body col-md-6">
-            <h2 className="card-title">Control Center</h2>
-            <div className="form-group">
-              <div className="form-check">
-                <input type="checkbox" id="liveFeed" className="form-check-input"
-                  checked={this.state.debug.showLiveCameraFeed}
-                  onChange={() => this.updateDebugState("showLiveCameraFeed", !this.state.debug.showLiveCameraFeed)} />
-                <label htmlFor="liveFeed" className="form-check-label">Show Live Feed</label>
-              </div>
+          <div className="row mt-3 my-3 pl-3">
+            <div className="card card-body col-md-6">
+              <h2 className="card-title">Control Center</h2>
+              <div className="form-group">
+                <div className="form-check">
+                  <input type="checkbox" id="liveFeed" className="form-check-input"
+                    checked={this.state.debug.showLiveCameraFeed}
+                    onChange={() => this.updateDebugState("showLiveCameraFeed", !this.state.debug.showLiveCameraFeed)} />
+                  <label htmlFor="liveFeed" className="form-check-label">Show Live Feed</label>
+                </div>
 
-              <div className="form-check">
-                <input type="checkbox" id="handTracking" className="form-check-input"
-                  checked={this.state.debug.showHandTracking}
-                  onChange={() => this.updateDebugState("showHandTracking", !this.state.debug.showHandTracking)} />
-                <label htmlFor="handTracking" className="form-check-label">Show Hand Tracking</label>
+                <div className="form-check">
+                  <input type="checkbox" id="handTracking" className="form-check-input"
+                    checked={this.state.debug.showHandTracking}
+                    onChange={() => this.updateDebugState("showHandTracking", !this.state.debug.showHandTracking)} />
+                  <label htmlFor="handTracking" className="form-check-label">Show Hand Tracking</label>
+                </div>
+                <div className="form-check">
+                  <input type="checkbox" id="indexFingerTracking" className="form-check-input"
+                    checked={this.state.debug.showIndexFingerTracking}
+                    onChange={() => this.updateDebugState("showIndexFingerTracking", !this.state.debug.showIndexFingerTracking)} />
+                  <label htmlFor="indexFingerTracking" className="form-check-label">Show Index Finger Tracking</label>
+                </div>
               </div>
-              <div className="form-check">
-                <input type="checkbox" id="indexFingerTracking" className="form-check-input"
-                  checked={this.state.debug.showIndexFingerTracking}
-                  onChange={() => this.updateDebugState("showIndexFingerTracking", !this.state.debug.showIndexFingerTracking)} />
-                <label htmlFor="indexFingerTracking" className="form-check-label">Show Index Finger Tracking</label>
+              <div className="">
+                <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
+                  title="Reloads the model">Flip Camera
+              </button>
+                <button type="button" className="btn btn-info mr-3" onClick={() => this.setTrackingOrigin("mouse")}
+                  title="Use the current mouse position as the top-left corner of the screen">Setup mouse tracker
+              </button>
+                <button type="button" className="btn btn-info mr-3" onClick={this.setFingerTrackingOrigin}
+                  title="Use the current index finger position as the top-left corner of the screen (requires tracking to be on)">Setup hand tracker
+              </button>
+                <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
+                  onClick={this.startTracking}>
+                  Start Tracking
+              </button>
+                <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
+                  onClick={this.stopTracking}>
+                  Stop Tracking
+              </button>
+                <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
               </div>
             </div>
-            <div className="">
-              <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
-                title="Reloads the model">Flip Camera
-              </button>
-              <button type="button" className="btn btn-info mr-3" onClick={() => this.setTrackingOrigin("mouse")}
-                title="Use the current mouse position as the top-left corner of the screen">Setup mouse tracker
-              </button>
-              <button type="button" className="btn btn-info mr-3" onClick={this.setFingerTrackingOrigin}
-                title="Use the current index finger position as the top-left corner of the screen (requires tracking to be on)">Setup hand tracker
-              </button>
-              <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
-                onClick={this.startTracking}>
-                Start Tracking
-              </button>
-              <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
-                onClick={this.stopTracking}>
-                Stop Tracking
-              </button>
-              <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
-            </div>
-          </div>
-          <div className="row mt-3">
-            <div id="canvas-wrapper" className="col-md-6" style={{
-              "display": this.state.debug.showLiveCameraFeed ? "block" : "none"
-            }}>
-              <canvas id="output" />
-              <video id="video" playsInline style={{
-                "WebkitTransform": "scaleX(-1)",
-                "transform": "scaleX(-1)",
-                "visibility": "hidden",
-                "width": "auto",
-                "height": "auto",
-                "position": "absolute"
+            <div className="col-md-6">
+              <div id="canvas-wrapper" style={{
+                "display": this.state.debug.showLiveCameraFeed ? "block" : "none",
+                "width": this.state.videoWidth,
+                "height": this.state.videoHeight
               }}>
-              </video>
-            </div>
-            <div id="drawing-canvas-div" className="col-md-6">
-              <canvas id="drawing-canvas" height={this.state.videoHeight} width={this.state.videoWidth} />
+                <canvas id="output" />
+                <video id="video" playsInline style={{
+                  "WebkitTransform": "scaleX(-1)",
+                  "transform": "scaleX(-1)",
+                  "visibility": "hidden",
+                  "width": "auto",
+                  "height": "auto",
+                  "position": "absolute"
+                }}>
+                </video>
+              </div>
             </div>
           </div>
+          <div id="drawing-canvas-div">
+            <canvas id="drawing-canvas" style={{
+              "width": this.state.drawingCanvasWidth,
+              "height": this.state.drawingCanvasHeight
+            }} />
+          </div>
+
         </main>
       </div>
     )
