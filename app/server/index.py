@@ -63,14 +63,26 @@ def read_message(message):
     mc.set_mouse_origin(message[0], message[1])
 
 
-@socketio.on('set-mouse-origin', namespace='/test')
+@socketio.on('set-mouse-top-left', namespace='/test')
 def read_message():
     current_mouse_pos = pyautogui.position()
-    mc.set_mouse_origin(current_mouse_pos.x, current_mouse_pos.y)
+    mc.set_mouse_bounds("top-left", current_mouse_pos.x, current_mouse_pos.y)
 
-@socketio.on('set-finger-origin', namespace='/test')
+
+@socketio.on('set-mouse-bottom-right', namespace='/test')
 def read_message():
-    mc.save_curr_finger_as_origin()
+    current_mouse_pos = pyautogui.position()
+    mc.set_mouse_bounds("bottom-right", current_mouse_pos.x, current_mouse_pos.y)
+
+@socketio.on('set-finger-top-left', namespace='/test')
+def read_message(coords):
+    # mc.use_curr_finger_as_corner("top-left")
+    mc.set_finger_bounds("top-left", coords[0], coords[1])
+
+@socketio.on('set-finger-bottom-right', namespace='/test')
+def read_message(coords):
+    # mc.use_curr_finger_as_corner("bottom-right")
+    mc.set_finger_bounds("bottom-right", coords[0], coords[1])
 
 @socketio.on('my broadcast event', namespace='/test')
 def read_message(message):

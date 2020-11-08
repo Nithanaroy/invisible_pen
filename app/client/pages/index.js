@@ -35,7 +35,7 @@ class Home extends React.Component {
       videoWidth: 300, videoHeight: 169,
       drawingCanvasWidth: 300, drawingCanvasHeight: 169,
 
-      usingFrontCamera: true, // choosing this safe default as webcams are usually front facing
+      usingFrontCamera: false, // choosing this safe default as webcams are usually front facing
       isTracking: false,
       debug: {
         showLiveCameraFeed: true,
@@ -47,7 +47,8 @@ class Home extends React.Component {
 
       shouldSendCoordsToServer: false, // to reduce the number of messages sent to the backend server
 
-      connectedToServer: false
+      connectedToServer: false,
+      lastKnownHandCoords: []
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
@@ -95,25 +96,29 @@ class Home extends React.Component {
   };
 
   initializeTracker(videoCanvas, camera) {
-    this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.sendHandPredictions, this.handleUserAway);
+    this.tracker = new HandTracker(videoCanvas, camera, this.state.debug, this.syncHandCoords, this.handleUserAway);
     this.drawingCanvas = new DrawingCanvas(document.getElementById("drawing-canvas"), this.state.usingFrontCamera); // initialize the canvas
     this.tracker.state.isTracking = this.state.isTracking; // TODO: Not a scalable way to keep both the states in sync
     return this.tracker.main(this.updateAlert, this.drawingCanvas);
   }
 
-  sendHandPredictions = (predictions) => {
-    if (predictions.length > 0 && this.state.shouldSendCoordsToServer) {
+  syncHandCoords = (predictions) => {
+    if (predictions.length > 0) {
       const indexFingerTip = 3;
-      this.userAwayTimer.stop();
+      // this.userAwayTimer.stop();
       const [x, y, z] = predictions[0]["annotations"]["indexFinger"][indexFingerTip];
-      this.socket.sendHandPredictions(this.translateCoords({ x, y, z }));
+      this.lastKnownHandCoords = this.translateCoords({ x, y, z })
+      if (this.state.shouldSendCoordsToServer) {
+        this.socket.sendHandPredictions(this.lastKnownHandCoords);
+      }
     }
   };
 
   // predCoords should be of the form, {x: 10, y: 20, z: 5}
   translateCoords = (predCoords) => {
     const { x, y, z } = this.state.trackerOrientationCoordsRemap;
-    const [newX, newY, newZ] = [predCoords[x] * this.scaling.x, predCoords[y] * this.scaling.y, predCoords[z]]
+    const [newX, newY, newZ] = [predCoords[x], predCoords[y], predCoords[z]]
+    // TODO: should use drawing canvas width for lateral inversion instead of video width
     const correctedX = this.state.usingFrontCamera ? this.state.videoWidth - newX : newX; // adjust lateral inversion if any
     return [correctedX, newY]
   }
@@ -124,40 +129,47 @@ class Home extends React.Component {
     // this.userAwayTimer.startIfNotOn(() => this.socket.releaseMouse());
   };
 
-  setTrackingOrigin = (originFor = "mouse") => {
+  setTrackingFor = (coordsOf) => {
     // Give some time for the user to move their mouse or tracking finger to the origin of interest
     const timeout = 3;
     let timeoutTimer = timeout;
     const timer = setInterval(() => {
       if (timeoutTimer === 0) {
         clearInterval(timer);
-        this.updateAlert(`Your ${originFor} tracker is setup!`)
+        this.updateAlert(`Your ${coordsOf} tracker is setup!`)
       } else {
-        this.updateAlert(`Capturing ${originFor} position in ${timeoutTimer}s`);
+        this.updateAlert(`Capturing ${coordsOf} position in ${timeoutTimer}s`);
         timeoutTimer--;
       }
     }, 1000);
     let trackingFn = null;
-    switch (originFor) {
-      case "mouse":
-        trackingFn = this.socket.setCurrMouseAsOrigin
+
+    switch (coordsOf) {
+      case "mouse-top-left":
+        trackingFn = this.socket.setCurrMouseTopLeft
         break;
-      case "index finger":
-        trackingFn = this.socket.setCurrFingerAsOrigin
+      case "mouse-bottom-right":
+        trackingFn = this.socket.setCurrMouseBottomRight
+        break;
+      case "index-top-left":
+        trackingFn = () => this.socket.setFingerTopLeft(this.lastKnownHandCoords)
+        break;
+      case "index-bottom-right":
+        trackingFn = () => this.socket.setFingerBottomRight(this.lastKnownHandCoords)
         break;
       default:
-        this.updateAlert(`Unable to setup the ${originFor} tracker. Please try again in sometime or check your browser logs if possible`, "error");
+        this.updateAlert(`Unable to setup the ${coordsOf} tracker. Please try again in sometime or check your browser logs if possible`, "error");
       // console.error(error);
     }
 
     setTimeout(trackingFn, timeout * 1000);
   };
 
-  setFingerTrackingOrigin = () => {
+  setFingerTrackingCoords = (corner) => {
     if (!this.state.isTracking) {
-      this.updateAlert("Tracking needs to be ON to use the current finger's position as origin", "warning")
+      this.updateAlert("Tracking needs to be ON to use the current finger's position", "warning")
     } else {
-      this.setTrackingOrigin("index finger");
+      this.setTrackingFor(corner);
     }
   }
 
@@ -267,7 +279,6 @@ class Home extends React.Component {
         <main>
           <p className="display-2 text-center">Invisible Pen</p>
           <Alert {...this.state.alert} />
-          <p id="debug-container"></p>
           <div className="row mt-3 my-3 px-3">
             <div className="card card-body col-lg-6 col-sm-12 mb-3">
               <h2 className="card-title">Control Center</h2>
@@ -296,12 +307,6 @@ class Home extends React.Component {
                 <button type="button" className="btn btn-info m-3" onClick={this.flipCamera}
                   title="Reloads the model">Flip Camera
               </button>
-                <button type="button" className="btn btn-info m-3" onClick={() => this.setTrackingOrigin("mouse")}
-                  title="Use the current mouse position as the top-left corner of the screen">Setup mouse tracker
-              </button>
-                <button type="button" className="btn btn-info m-3" onClick={this.setFingerTrackingOrigin}
-                  title="Use the current index finger position as the top-left corner of the screen (requires tracking to be on)">Setup hand tracker
-              </button>
                 <button type="button" className={`btn btn-secondary m-3 ${this.state.isTracking ? "d-none" : ""}`}
                   onClick={this.startTracking}>
                   Start Tracking
@@ -311,6 +316,21 @@ class Home extends React.Component {
                   Stop Tracking
               </button>
                 <button type="button" className="btn btn-danger m-3" onClick={this.clearCanvas}>Clear Canvas</button>
+
+                <hr />
+
+                <button type="button" className="btn btn-info m-3" onClick={() => this.setTrackingFor("mouse-top-left")}
+                  title="Use the current mouse position as the top-left corner of the screen">Mark top-left corner of your screen with mouse
+              </button>
+                <button type="button" className="btn btn-info m-3" onClick={() => this.setTrackingFor("mouse-bottom-right")}
+                  title="Use the current mouse position as the bottom-right corner of the screen">Mark bottom-right corner of your screen with mouse
+              </button>
+                <button type="button" className="btn btn-info m-3" onClick={() => this.setFingerTrackingCoords("index-top-left")}
+                  title="Use the current index finger position as the top-left corner of the screen">Mark top-left corner of screen with your index finger
+              </button>
+                <button type="button" className="btn btn-info m-3" onClick={() => this.setFingerTrackingCoords("index-bottom-right")}
+                  title="Use the current index finger position as the bottom-right corner of the screen">Mark bottom-right corner of screen with your index finger
+              </button>
               </div>
             </div>
             <div className="col-lg-6">
@@ -338,7 +358,7 @@ class Home extends React.Component {
               "height": this.state.drawingCanvasHeight
             }} />
           </div>
-
+          <p id="debug-container"></p>
         </main>
       </div>
     )

@@ -31,12 +31,20 @@ class SocketIO {
     this.s.emit("release-mouse");
   };
 
-  setCurrMouseAsOrigin = () => {
-    this.s.emit("set-mouse-origin");
+  setCurrMouseTopLeft = () => {
+    this.s.emit("set-mouse-top-left");
   };
 
-  setCurrFingerAsOrigin = () => {
-    this.s.emit("set-finger-origin");
+  setCurrMouseBottomRight = () => {
+    this.s.emit("set-mouse-bottom-right");
+  };
+
+  setFingerTopLeft = (coords) => {
+    this.s.emit("set-finger-top-left", coords);
+  };
+
+  setFingerBottomRight = (coords) => {
+    this.s.emit("set-finger-bottom-right", coords);
   };
 
   connected = () => {
@@ -54,6 +62,7 @@ class SocketIO {
     this.isConnected = false;
     console.log("Disconnected from server");
     this.disconnectCb();
+    // TODO: prevent flooding the server once the connection if back - Too many packets in payload
   }
 
 
