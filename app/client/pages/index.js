@@ -46,22 +46,21 @@ class Home extends React.Component {
       trackerOrientationCoordsRemap: { "x": "x", "y": "y", "z": "z" },
 
       shouldSendCoordsToServer: false, // to reduce the number of messages sent to the backend server
-      transmissionHotKeyCode: 116, // F5 key
+
+      connectedToServer: false
     };
     const minInactivePeriod = 1000; // in milliseconds
     this.userAwayTimer = new UserAwayTimer(minInactivePeriod);
   }
 
-  enableCoordsTransmission = (keyDownEvent) => {
-    if (keyDownEvent.which === this.state.transmissionHotKeyCode) {
-      if (!this.state.shouldSendCoordsToServer) {
-        this.setState({ shouldSendCoordsToServer: true });
-      }
+  enableCoordsTransmission = () => {
+    if (!this.state.shouldSendCoordsToServer) {
+      this.setState({ shouldSendCoordsToServer: true });
     }
   }
 
-  disableCoordsTransmission = (keyUpEvent) => {
-    if (keyUpEvent.which === this.state.transmissionHotKeyCode) {
+  disableCoordsTransmission = () => {
+    if (this.state.shouldSendCoordsToServer) {
       this.setState({ shouldSendCoordsToServer: false });
     }
   }
@@ -177,11 +176,13 @@ class Home extends React.Component {
 
   onMouseControllerConnection = () => {
     this.updateAlert("Connected to the mouse controller server in your home!", "success");
+    this.setState({ connectedToServer: true });
   };
 
   onMouseControllerDisconnection = () => {
     // TODO: Give an option to force retry / test connection state, as the connected callback is sometimes not fired
     this.updateAlert("Oops! lost the connection to server. Will update you once I'm able to reconnect again. Do check the browser logs if possible", "danger");
+    this.setState({ connectedToServer: false });
   };
 
   syncLiveVideoState = () => {
@@ -207,6 +208,21 @@ class Home extends React.Component {
     this.setState({ trackerOrientationCoordsRemap: { x, y, z } })
   }
 
+  onServerMessage = (message) => {
+    switch (message.data) {
+      case "tracking-on":
+        this.enableCoordsTransmission();
+        break;
+
+      case "tracking-off":
+        this.disableCoordsTransmission();
+        break;
+
+      default:
+        break;
+    }
+  }
+
   async componentDidMount() {
     this.webcam = document.getElementById('video');
     const mouseServer = (new URLSearchParams(window.location.search)).get("mouse-controller-server") || "https://192.168.0.5:5000";
@@ -214,14 +230,11 @@ class Home extends React.Component {
     // const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('drawing-canvas-div')); // match camera's resolution with canvas resolution
     const { contentWidth, contentHeight } = this.getContentSize(document.getElementById('canvas-wrapper'));
     this.camera = new Camera(this.webcam, contentWidth, contentHeight, this.state.usingFrontCamera); // Note: actual video dimensions may vary
-    this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection);
+    this.socket = new SocketIO(mouseServer, "test", this.onMouseControllerConnection, this.onMouseControllerDisconnection, this.onServerMessage);
     this.loadTrackerOrientation();
 
     await this.initializeTracker(this.videoCanvas, this.camera); // wait for the camera to load
     this.syncLiveVideoState();
-
-    document.addEventListener("keydown", this.enableCoordsTransmission);
-    document.addEventListener("keyup", this.disableCoordsTransmission);
   }
 
   get scaling() {

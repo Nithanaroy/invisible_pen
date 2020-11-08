@@ -1,7 +1,7 @@
 import socketio from "socket.io-client"
 
 class SocketIO {
-  constructor(url, namespace, connectedCb, disconnectCb) {
+  constructor(url, namespace, connectedCb, disconnectCb, serverMsgCb) {
     // const portUrlPart = port.toString().length > 0 ? `:${port}` : "";
     const nsUrlPart = namespace.length > 0 ? `/${namespace}` : "";
     // this.s = socketio.connect(`https://${domain}${portUrlPart}${nsUrlPart}`);
@@ -10,6 +10,7 @@ class SocketIO {
 
     this.connectedCb = connectedCb;
     this.disconnectCb = disconnectCb;
+    this.serverMsgCb = serverMsgCb;
 
     this.s.on('connect', this.connected);
     this.s.on('message', this.messageReceived);
@@ -44,8 +45,9 @@ class SocketIO {
     this.connectedCb();
   }
 
-  messageReceived(data) {
-    console.log(`Got ${data} from server`);
+  messageReceived = (data) => {
+    // console.log(`Got ${data} from server`);
+    this.serverMsgCb(data);
   }
 
   disconnected = () => {
@@ -53,6 +55,8 @@ class SocketIO {
     console.log("Disconnected from server");
     this.disconnectCb();
   }
+
+
 }
 
 export default SocketIO;

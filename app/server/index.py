@@ -4,7 +4,9 @@ References:
 2. https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
 3. To authenticate local HTTPS certs https://www.freecodecamp.org/news/how-to-get-https-working-on-your-local-development-environment-in-5-minutes-7af615770eec/
 """
-from flask import Flask, render_template
+import traceback, sys
+
+from flask import Flask, request
 from flask_socketio import SocketIO, emit
 import pyautogui
 from pynput import keyboard
@@ -22,6 +24,7 @@ logging.getLogger('werkzeug').disabled = True
 
 mc = MouseController()
 tracking_hotkey = keyboard.Key.f5
+connected_clients = set([])
 
 @app.route('/')
 def index():
@@ -77,21 +80,37 @@ def read_message(message):
 @socketio.on('connect', namespace='/test')
 def ack_connect():
     # emit('my response', {'data': 'Connected'})
-    print("Client connected")
+    print(f"Client connected, {request.sid}")
+    connected_clients.add(request.sid)
 
 
 @socketio.on('disconnect', namespace='/test')
 def ack_disconnect():
-    print('Client disconnected')
+    print(f'Client disconnected, {request.sid}')
+    connected_clients.remove(request.sid)
+
+def broadcast_to_all_clients(data):
+    # create a copy of clients to avoid race conditions of set being modified during iteration
+    for client_id in set(connected_clients):
+        try:
+            # socketio.emit('message', data, room=client_id, namespace="/test")
+            socketio.emit('message', data, namespace="/test")
+        except RuntimeError:
+            print(f"Failed to post the message, {data} to {client_id}")
+            traceback.print_exc(file=sys.stdout)
 
 def on_key_press(key):
     if key == tracking_hotkey:
+        if not mc.is_tracking_on():
+            print("Hotkey pressed, started tracking")
+            broadcast_to_all_clients({'data': 'tracking-on'})
         mc.set_tracking_state(True)
         pyautogui.mouseDown()
 
 def on_key_release(key):
     if key == tracking_hotkey:
         print("Hotkey released, requesting to release the mouse from server side")
+        broadcast_to_all_clients({'data': 'tracking-off'})
         # release_mouse()
         pyautogui.mouseUp()
         mc.set_tracking_state(False)
