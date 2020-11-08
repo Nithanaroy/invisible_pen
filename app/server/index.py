@@ -34,20 +34,31 @@ def index():
 def testConnection():
     emit('connect', {'data': 'Connected'})
 
+# @socketio.on('move-mouse', namespace='/test')
+# def move_mouse(coords):
+#     # emit('my response', {'data': message['data']})
+#     # print(coords)
+#     # pyautogui.dragTo(message[0] + origin[0], message[1] + origin[1], button='left')
+#     # pyautogui.moveTo(coords[0] + origin[0], coords[1] + origin[1], button='left')
+#     mc.curr_finger_pos = coords
+#     if mc.is_tracking_on():
+#         mouse_origin = mc.get_mouse_origin()
+#         finger_origin = mc.get_finger_origin()
+#         # pyautogui.mouseDown(coords[0] + mouse_origin[0] - finger_origin[0],
+#                             # coords[1] + mouse_origin[1] - finger_origin[1], button='left')
+#         pyautogui.moveTo(coords[0] + mouse_origin[0] - finger_origin[0],
+#                             coords[1] + mouse_origin[1] - finger_origin[1])
+
+
 @socketio.on('move-mouse', namespace='/test')
-def move_mouse(coords):
-    # emit('my response', {'data': message['data']})
-    # print(coords)
-    # pyautogui.dragTo(message[0] + origin[0], message[1] + origin[1], button='left')
-    # pyautogui.moveTo(coords[0] + origin[0], coords[1] + origin[1], button='left')
-    mc.curr_finger_pos = coords
+def move_mouse(finger_coords):
     if mc.is_tracking_on():
+        # TODO: check if finger_coords are within the finger's bounding box
         mouse_origin = mc.get_mouse_origin()
         finger_origin = mc.get_finger_origin()
-        # pyautogui.mouseDown(coords[0] + mouse_origin[0] - finger_origin[0],
-                            # coords[1] + mouse_origin[1] - finger_origin[1], button='left')
-        pyautogui.moveTo(coords[0] + mouse_origin[0] - finger_origin[0],
-                            coords[1] + mouse_origin[1] - finger_origin[1])
+        mouse_x_displacement = abs(finger_coords[0] - finger_origin[0]) * mc.x_scale
+        mouse_y_displacement = abs(finger_coords[1] - finger_origin[1]) * mc.y_scale
+        pyautogui.moveTo(mouse_origin[0]  + mouse_x_displacement, mouse_origin[1] + mouse_y_displacement)
 
 
 @socketio.on('release-mouse', namespace='/test')
