@@ -268,8 +268,8 @@ class Home extends React.Component {
           <p className="display-2 text-center">Invisible Pen</p>
           <Alert {...this.state.alert} />
           <p id="debug-container"></p>
-          <div className="row mt-3 my-3 pl-3">
-            <div className="card card-body col-md-6">
+          <div className="row mt-3 my-3 px-3">
+            <div className="card card-body col-lg-6 col-sm-12 mb-3">
               <h2 className="card-title">Control Center</h2>
               <div className="form-group">
                 <div className="form-check">
@@ -293,27 +293,27 @@ class Home extends React.Component {
                 </div>
               </div>
               <div className="">
-                <button type="button" className="btn btn-info mr-3" onClick={this.flipCamera}
+                <button type="button" className="btn btn-info m-3" onClick={this.flipCamera}
                   title="Reloads the model">Flip Camera
               </button>
-                <button type="button" className="btn btn-info mr-3" onClick={() => this.setTrackingOrigin("mouse")}
+                <button type="button" className="btn btn-info m-3" onClick={() => this.setTrackingOrigin("mouse")}
                   title="Use the current mouse position as the top-left corner of the screen">Setup mouse tracker
               </button>
-                <button type="button" className="btn btn-info mr-3" onClick={this.setFingerTrackingOrigin}
+                <button type="button" className="btn btn-info m-3" onClick={this.setFingerTrackingOrigin}
                   title="Use the current index finger position as the top-left corner of the screen (requires tracking to be on)">Setup hand tracker
               </button>
-                <button type="button" className={`btn btn-secondary ${this.state.isTracking ? "d-none" : ""}`}
+                <button type="button" className={`btn btn-secondary m-3 ${this.state.isTracking ? "d-none" : ""}`}
                   onClick={this.startTracking}>
                   Start Tracking
               </button>
-                <button type="button" className={`btn btn-secondary ${!this.state.isTracking ? "d-none" : ""}`}
+                <button type="button" className={`btn btn-secondary m-3 ${!this.state.isTracking ? "d-none" : ""}`}
                   onClick={this.stopTracking}>
                   Stop Tracking
               </button>
-                <button type="button" className="btn btn-danger ml-3" onClick={this.clearCanvas}>Clear Canvas</button>
+                <button type="button" className="btn btn-danger m-3" onClick={this.clearCanvas}>Clear Canvas</button>
               </div>
             </div>
-            <div className="col-md-6">
+            <div className="col-lg-6">
               <div id="canvas-wrapper" style={{
                 "display": this.state.debug.showLiveCameraFeed ? "block" : "none",
                 "width": this.state.videoWidth,
